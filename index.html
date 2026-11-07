@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HAPPY HUNTER (bản xanh) — Mô hình Blender 3D trên biển</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#7fb6e4;font-family:"Segoe UI",system-ui,sans-serif}
+  #app{position:fixed;inset:0}
+  canvas{display:block}
+  .panel{position:fixed;top:18px;left:18px;max-width:360px;background:rgba(8,25,47,.82);color:#eaf4ff;
+    border:1px solid rgba(140,190,255,.35);border-radius:16px;padding:16px 18px;backdrop-filter:blur(8px);z-index:5}
+  .kick{color:#ffd23e;font-size:11px;letter-spacing:2px;text-transform:uppercase}
+  .panel h1{margin:6px 0 8px;font-size:24px;color:#fff}
+  .panel h1 b{color:#ffd23e}
+  .panel p{margin:0 0 8px;font-size:13.5px;line-height:1.55;color:#cfe4ff}
+  .panel .sub{color:#9fc6ee;font-size:12.5px}
+  .bar{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;z-index:5;max-width:96vw}
+  .bar button{background:rgba(8,25,47,.85);color:#eaf4ff;border:1px solid rgba(140,190,255,.4);border-radius:999px;
+    padding:9px 15px;font-size:13.5px;cursor:pointer;backdrop-filter:blur(6px)}
+  .bar button:hover{border-color:#ffd23e;color:#ffd23e}
+  .bar button.on{background:#ffd23e;color:#12233d;border-color:#ffd23e;font-weight:600}
+  .hint{position:fixed;right:16px;bottom:16px;color:#eaf6ff;background:rgba(8,25,47,.65);padding:7px 12px;border-radius:999px;font-size:12.5px;z-index:5}
+  #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;
+    background:linear-gradient(#3f8fd2,#79b7e6);font-size:17px;z-index:9;transition:opacity .6s}
+  @media (max-width:640px){ .panel{max-width:78vw;padding:12px 14px} .panel h1{font-size:19px} .hint{display:none} }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="loading">⚓ Đang tải mô hình tàu…</div>
+
+<div class="panel">
+  <div class="kick">★ Mô hình Blender 3D ★</div>
+  <h1>HAPPY <b>HUNTER</b></h1>
+  <p>Tàu kéo <b>bản xanh HAIPHONG</b> dựng chi tiết bằng <b>Blender</b> (8 lốp chống va mỗi mạn, gờ chéo, sọc trắng mép boong, xuồng đỏ, ống Kort + chân vịt ở đuôi), đặt trên mặt <b>biển xanh dương trong lành</b>.</p>
+  <p class="sub">Kéo chuột để xoay • Lăn chuột để zoom • Bấm các nút dưới để xem từng góc</p>
+</div>
+
+<div class="bar">
+  <button data-v="toan" class="on">🌏 Toàn cảnh</button>
+  <button data-v="mui">⚓ Cận cảnh mũi</button>
+  <button data-v="duoi">🌀 Đuôi — chân vịt</button>
+  <button data-v="boong">🛠 Boong làm việc</button>
+  <button id="btnSpin" class="on">🔄 Tự xoay</button>
+</div>
+<div class="hint">Mô hình Blender xuất GLB • Hiển thị bằng Three.js</div>
+
+<script type="importmap">
+{"imports":{"three":"./three.module.js","three/addons/":"./addons/"}}
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+const app = document.getElementById("app");
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.06;
+app.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xa8d2ee, 240, 560);
+
+function skyTexture(stops){
+  const c = document.createElement("canvas"); c.width = 4; c.height = 512;
+  const g = c.getContext("2d");
+  const gr = g.createLinearGradient(0,0,0,512);
+  for (const [o,col] of stops) gr.addColorStop(o,col);
+  g.fillStyle = gr; g.fillRect(0,0,4,512);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const sky = new THREE.Mesh(new THREE.SphereGeometry(800, 24, 16),
+  new THREE.MeshBasicMaterial({ map: skyTexture([[0,"#2b78c8"],[0.55,"#7cb8e8"],[0.78,"#d3ecfa"],[1,"#eef8fd"]]), side: THREE.BackSide, fog:false }));
+scene.add(sky);
+
+const camera = new THREE.PerspectiveCamera(46, innerWidth/innerHeight, 0.1, 2000);
+camera.position.set(41, 15, 52);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 3, 0);
+controls.enableDamping = true; controls.dampingFactor = 0.06;
+controls.maxPolarAngle = Math.PI * 0.62; controls.minDistance = 12; controls.maxDistance = 260;
+controls.autoRotate = true; controls.autoRotateSpeed = 0.7;
+
+scene.add(new THREE.HemisphereLight(0xd8ecff, 0x1c4d75, 0.95));
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
+sun.position.set(55, 70, 35); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -60; sun.shadow.camera.right = 60;
+sun.shadow.camera.top = 60; sun.shadow.camera.bottom = -60;
+sun.shadow.bias = -0.0004;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0xbfe0ff, 0.5); fill.position.set(-40, 25, -50); scene.add(fill);
+
+/* fresh blue sea */
+const oceanGeo = new THREE.PlaneGeometry(700, 700, 88, 88);
+oceanGeo.rotateX(-Math.PI/2);
+const ocean = new THREE.Mesh(oceanGeo, new THREE.MeshStandardMaterial({
+  color:0x1773c4, roughness:0.55, metalness:0.0, transparent:true, opacity:0.94 }));
+ocean.receiveShadow = true;
+scene.add(ocean);
+const oPos = oceanGeo.attributes.position;
+const oBase = oPos.array.slice();
+
+/* the Blender ship */
+const ship = new THREE.Group(); scene.add(ship);
+let shipReady = false;
+new GLTFLoader().load("happy-hunter-blue.glb", (gltf) => {
+  const model = gltf.scene;
+  model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  ship.add(model);
+  shipReady = true; window.__shipReady = true;
+  const ld = document.getElementById("loading");
+  ld.style.opacity = "0"; setTimeout(() => ld.remove(), 700);
+}, undefined, (err) => {
+  document.getElementById("loading").textContent = "Không tải được mô hình: " + err.message;
+  console.error(err);
+});
+
+/* camera flights */
+const VIEWS = {
+  toan:  [[41, 15, 52], [0, 3, 0]],
+  mui:   [[38, 6, 24], [16, 4.5, 0]],
+  duoi:  [[-46, 9, 30], [-14, 2.5, 0]],
+  boong: [[-16, 24, 30], [-9, 3.5, 0]],
+};
+let flight = null;
+function flyTo(name){
+  const [p, t] = VIEWS[name];
+  flight = { t: 0, dur: 1.7,
+    p0: camera.position.clone(), p1: new THREE.Vector3(...p),
+    c0: controls.target.clone(), c1: new THREE.Vector3(...t) };
+  const mid = flight.p0.clone().add(flight.p1).multiplyScalar(0.5);
+  mid.y = Math.max(flight.p0.y, flight.p1.y) + mid.distanceTo(flight.p0) * 0.16 + 3;
+  flight.pm = mid;
+}
+document.querySelectorAll("[data-v]").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("[data-v]").forEach(x => x.classList.remove("on"));
+  b.classList.add("on"); flyTo(b.dataset.v);
+}));
+const btnSpin = document.getElementById("btnSpin");
+btnSpin.addEventListener("click", () => {
+  controls.autoRotate = !controls.autoRotate;
+  btnSpin.classList.toggle("on", controls.autoRotate);
+});
+controls.addEventListener("start", () => { flight = null; });
+
+const clock = new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  for (let i = 0; i < oPos.count; i++){
+    const x = oBase[i*3], z = oBase[i*3+2];
+    oPos.setY(i, Math.sin(x*0.11 + t*0.9)*0.32 + Math.cos(z*0.13 + t*0.7)*0.3);
+  }
+  oPos.needsUpdate = true; oceanGeo.computeVertexNormals();
+  if (shipReady){
+    ship.position.y = Math.sin(t*0.55)*0.13;
+    ship.rotation.z = Math.sin(t*0.42)*0.006;
+    ship.rotation.x = Math.sin(t*0.31)*0.004;
+  }
+  if (flight){
+    flight.t += 1/60 / flight.dur;
+    const k = flight.t >= 1 ? 1 : (1 - Math.pow(1 - flight.t, 3));
+    const a = flight.p0.clone().lerp(flight.pm, k), b = flight.pm.clone().lerp(flight.p1, k);
+    camera.position.copy(a.lerp(b, k));
+    controls.target.copy(flight.c0.clone().lerp(flight.c1, k));
+    if (flight.t >= 1) flight = null;
+  }
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+addEventListener("resize", () => {
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
