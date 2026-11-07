@@ -53,6 +53,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 const app = document.getElementById("app");
 const renderer = new THREE.WebGLRenderer({ antialias:true });
@@ -61,7 +62,7 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.06;
+renderer.toneMappingExposure = 1.1;
 app.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -87,8 +88,12 @@ controls.enableDamping = true; controls.dampingFactor = 0.06;
 controls.maxPolarAngle = Math.PI * 0.62; controls.minDistance = 12; controls.maxDistance = 260;
 controls.autoRotate = true; controls.autoRotateSpeed = 0.7;
 
-scene.add(new THREE.HemisphereLight(0xd8ecff, 0x1c4d75, 0.95));
-const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
+/* image-based lighting: gives the web render soft, Blender-like ambience */
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.5;
+scene.add(new THREE.HemisphereLight(0xd8ecff, 0x1c4d75, 0.55));
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.4);
 sun.position.set(55, 70, 35); sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.left = -60; sun.shadow.camera.right = 60;
@@ -101,7 +106,8 @@ const fill = new THREE.DirectionalLight(0xbfe0ff, 0.5); fill.position.set(-40, 2
 const oceanGeo = new THREE.PlaneGeometry(700, 700, 88, 88);
 oceanGeo.rotateX(-Math.PI/2);
 const ocean = new THREE.Mesh(oceanGeo, new THREE.MeshStandardMaterial({
-  color:0x1773c4, roughness:0.55, metalness:0.0, transparent:true, opacity:0.94 }));
+  color:0x1773c4, roughness:0.5, metalness:0.0, transparent:true, opacity:0.94 }));
+ocean.material.envMapIntensity = 0.55;
 ocean.receiveShadow = true;
 scene.add(ocean);
 const oPos = oceanGeo.attributes.position;
@@ -112,7 +118,7 @@ const ship = new THREE.Group(); scene.add(ship);
 let shipReady = false;
 new GLTFLoader().load("happy-hunter-blue.glb", (gltf) => {
   const model = gltf.scene;
-  model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; if (o.material) o.material.envMapIntensity = 0.7; } });
   ship.add(model);
   shipReady = true; window.__shipReady = true;
   const ld = document.getElementById("loading");
