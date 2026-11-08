@@ -16,7 +16,10 @@
     border-radius:12px; backdrop-filter:blur(10px);
     box-shadow:0 12px 36px rgba(0,10,25,.5), inset 0 1px 0 rgba(170,225,255,.16); }
   /* telemetry, top-left */
-  #telemetry { top:14px; left:14px; padding:10px 14px 9px; min-width:242px; }
+  #logoPlate { position:fixed; top:14px; left:14px; z-index:10; background:#ffffff;
+    border-radius:10px; padding:7px 12px; box-shadow:0 10px 28px rgba(0,10,25,.35); }
+  #logoPlate img { display:block; height:46px; width:auto; }
+  #telemetry { top:86px; left:14px; padding:10px 14px 9px; min-width:242px; }
   #telemetry .hd { font-size:10px; letter-spacing:.22em; color:#6fd3ff;
     border-bottom:1px solid rgba(96,190,255,.25); padding-bottom:6px; margin-bottom:7px;
     display:flex; justify-content:space-between; }
@@ -55,12 +58,29 @@
   #brand .sub { font-size:9.5px; letter-spacing:.32em; padding-left:.32em; color:rgba(210,240,255,.9);
     text-shadow:0 1px 10px rgba(0,50,100,.6); }
   /* controls, bottom-centre */
-  #controls { position:fixed; z-index:10; left:50%; bottom:186px; transform:translateX(-50%); display:flex; gap:7px; }
-  #controls button { font:inherit; font-size:11px; letter-spacing:.06em; cursor:pointer;
-    color:#cfeaff; background:rgba(5,26,48,.78); border:1px solid rgba(96,190,255,.4);
-    border-radius:999px; padding:8px 14px; backdrop-filter:blur(8px); transition:all .18s; }
+  #btnMenu { position:fixed; z-index:11; left:50%; bottom:186px; transform:translateX(-50%);
+    font:inherit; font-size:11.5px; letter-spacing:.1em; cursor:pointer; color:#eaf7ff;
+    background:linear-gradient(160deg, rgba(7,34,60,.88), rgba(4,20,38,.85));
+    border:1px solid rgba(111,211,255,.55); border-top:2px solid rgba(111,211,255,.7);
+    border-radius:999px; padding:10px 22px; backdrop-filter:blur(10px);
+    box-shadow:0 10px 30px rgba(0,10,25,.5); transition:all .18s; }
+  #btnMenu:hover { border-color:#6fd3ff; box-shadow:0 10px 34px rgba(20,120,200,.45); }
+  #controls { left:50%; margin-left:-176px; bottom:238px; width:352px; padding:14px 16px 12px;
+    animation:pop .18s ease-out; }
+  @keyframes pop { from { opacity:0; transform:translateY(8px) scale(.97); } to { opacity:1; transform:none; } }
+  #controls .popHd { display:flex; justify-content:space-between; align-items:center;
+    font-size:10.5px; letter-spacing:.22em; color:#6fd3ff;
+    border-bottom:1px solid rgba(96,190,255,.25); padding-bottom:9px; margin-bottom:10px; }
+  #controls .popSec { font-size:9.5px; letter-spacing:.24em; color:#7fa8c9; margin:8px 0 7px; }
+  #controls .popGrid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; }
+  #controls button { font:inherit; font-size:10.5px; letter-spacing:.04em; cursor:pointer;
+    color:#cfeaff; background:rgba(10,44,74,.65); border:1px solid rgba(96,190,255,.35);
+    border-radius:9px; padding:9px 4px; transition:all .15s; }
   #controls button:hover { border-color:#6fd3ff; color:#fff; }
   #controls button.on { background:#0e5f9e; border-color:#6fd3ff; color:#fff; }
+  #controls #btnClosePop { border:none; background:none; color:#7fa8c9; font-size:14px;
+    padding:2px 6px; cursor:pointer; }
+  #controls #btnClosePop:hover { color:#fff; }
   /* loading spinner (no text) */
   #loading { position:fixed; inset:0; z-index:30; display:flex; align-items:center; justify-content:center;
     background:#0a2e52; transition:opacity .6s; }
@@ -68,12 +88,13 @@
   #loading .spin { width:52px; height:52px; border-radius:50%;
     border:4px solid rgba(111,211,255,.25); border-top-color:#6fd3ff; animation:sp 0.9s linear infinite; }
   @keyframes sp { to { transform:rotate(360deg); } }
-  #controls { flex-wrap:wrap; justify-content:center; max-width:96vw; }
   @media (max-width:820px) {
-    #telemetry { min-width:0; padding:8px 10px; } #telemetry .row { font-size:11px; }
+    #logoPlate img { height:32px; }
+    #telemetry { top:70px; min-width:0; padding:8px 10px; } #telemetry .row { font-size:11px; }
     #minimap { width:148px; height:148px; }
     #console { display:none; }
-    #controls { bottom:14px; }
+    #btnMenu { bottom:14px; }
+    #controls { bottom:64px; }
     #brand .name { font-size:18px; } #brand .sub { display:none; } #brand .rule { width:200px; }
   }
 </style>
@@ -86,6 +107,8 @@
   <div class="rule"></div>
   <div class="sub">OFFSHORE SUPPORT VESSEL · LIVE NAVIGATION SIMULATION</div>
 </div>
+
+<div id="logoPlate"><img src="uth-logo.png" alt="UTH — University of Transport Ho Chi Minh City"></div>
 
 <div class="hud" id="telemetry">
   <div class="hd"><span>NAV · TELEMETRY</span><span class="live">● LIVE</span></div>
@@ -139,16 +162,24 @@
   </div>
 </div>
 
-<div id="controls">
-  <button data-view="tongquan" class="on">🌐 TỔNG QUAN</button>
-  <button data-view="cine">🎬 CINE</button>
-  <button data-view="chase">CAM · ĐUÔI</button>
-  <button data-view="bow">CAM · MŨI</button>
-  <button data-view="top">CAM · TRÊN</button>
-  <button data-view="orbit">CAM · TỰ DO</button>
-  <button id="btnDirector">▶ TRÌNH DIỄN</button>
-  <button id="btnFull">⛶ FULL</button>
-  <button id="btnSail" class="on">⏸ DỪNG CHẠY</button>
+<button id="btnMenu">🎛 ĐIỀU KHIỂN</button>
+<div class="hud" id="controls" style="display:none">
+  <div class="popHd"><span>ĐIỀU KHIỂN HIỂN THỊ</span><button id="btnClosePop" title="Đóng">✕</button></div>
+  <div class="popSec">CAMERA</div>
+  <div class="popGrid">
+    <button data-view="tongquan" class="on">🌐 TỔNG QUAN</button>
+    <button data-view="cine">🎬 CINE</button>
+    <button data-view="chase">CAM · ĐUÔI</button>
+    <button data-view="bow">CAM · MŨI</button>
+    <button data-view="top">CAM · TRÊN</button>
+    <button data-view="orbit">CAM · TỰ DO</button>
+  </div>
+  <div class="popSec">TRÌNH DIỄN</div>
+  <div class="popGrid">
+    <button id="btnDirector">▶ TRÌNH DIỄN</button>
+    <button id="btnFull">⛶ FULL</button>
+    <button id="btnSail" class="on">⏸ DỪNG CHẠY</button>
+  </div>
 </div>
 
 <div id="loading"><div class="spin"></div></div>
@@ -552,6 +583,18 @@ document.getElementById('btnFull').addEventListener('click', () => {
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen();
 });
+const popup = document.getElementById('controls');
+const btnMenu = document.getElementById('btnMenu');
+function togglePopup(show) {
+  popup.style.display = show === undefined ? (popup.style.display === 'none' ? 'block' : 'none') : (show ? 'block' : 'none');
+}
+btnMenu.addEventListener('click', (e) => { e.stopPropagation(); togglePopup(); });
+document.getElementById('btnClosePop').addEventListener('click', () => togglePopup(false));
+document.addEventListener('click', (e) => {
+  if (popup.style.display !== 'none' && !popup.contains(e.target)) togglePopup(false);
+});
+document.querySelectorAll('#controls [data-view]').forEach(b => b.addEventListener('click', () => togglePopup(false)));
+
 const btnSail = document.getElementById('btnSail');
 btnSail.addEventListener('click', () => {
   sailing = !sailing;
