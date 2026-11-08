@@ -32,12 +32,15 @@
   #minimapBox .hd { font-size:10px; letter-spacing:.22em; color:#6fd3ff; margin-bottom:6px; display:flex; justify-content:space-between; }
   #minimap { display:block; width:224px; height:224px; }
   /* charts, bottom-left */
-  #console { left:14px; right:14px; bottom:14px; padding:12px 18px 10px;
-    display:flex; gap:26px; align-items:flex-start; }
-  #console .cell { flex:1; min-width:0; }
+  #console { left:14px; right:14px; bottom:14px; padding:12px 14px 10px;
+    display:flex; gap:10px; align-items:stretch; }
+  #console .cell { flex:1; min-width:0; background:rgba(3,16,30,.38); border:1px solid rgba(96,190,255,.16);
+    border-radius:9px; padding:8px 10px 6px; }
+  #console .cell.compassCell { background:rgba(3,16,30,.38); }
+  #console .dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin:0 4px 1px 0; }
   #console .cell.compassCell { flex:0 0 128px; text-align:center; }
-  #console .hd { font-size:10px; letter-spacing:.18em; color:#6fd3ff; display:flex; justify-content:space-between; margin-bottom:4px; }
-  #console .hd b { color:#eaf7ff; }
+  #console .hd { font-size:9px; letter-spacing:.1em; color:#6fd3ff; display:flex; justify-content:space-between; margin-bottom:4px; white-space:nowrap; }
+  #console .hd b { color:#eaf7ff; font-size:11px; letter-spacing:0; }
   .chart { display:block; width:100%; height:64px; }
   #compass { display:block; width:118px; height:118px; margin:0 auto; }
   #vignette { position:fixed; inset:0; z-index:4; pointer-events:none;
@@ -52,7 +55,7 @@
   #brand .sub { font-size:9.5px; letter-spacing:.32em; padding-left:.32em; color:rgba(210,240,255,.9);
     text-shadow:0 1px 10px rgba(0,50,100,.6); }
   /* controls, bottom-centre */
-  #controls { position:fixed; z-index:10; left:50%; bottom:172px; transform:translateX(-50%); display:flex; gap:7px; }
+  #controls { position:fixed; z-index:10; left:50%; bottom:186px; transform:translateX(-50%); display:flex; gap:7px; }
   #controls button { font:inherit; font-size:11px; letter-spacing:.06em; cursor:pointer;
     color:#cfeaff; background:rgba(5,26,48,.78); border:1px solid rgba(96,190,255,.4);
     border-radius:999px; padding:8px 14px; backdrop-filter:blur(8px); transition:all .18s; }
@@ -107,12 +110,24 @@
 
 <div class="hud" id="console">
   <div class="cell">
-    <div class="hd"><span>SOG · kn</span><b id="cSogV">--</b></div>
+    <div class="hd"><span><i class="dot" style="background:#53f2ff"></i>SOG <i class="dot" style="background:#ffffff"></i>STW · kn</span><b id="cSogV">--</b></div>
     <canvas class="chart" id="cSog" width="528" height="132"></canvas>
   </div>
   <div class="cell">
-    <div class="hd"><span>HDG · °</span><b id="cHdgV">--</b></div>
+    <div class="hd"><span><i class="dot" style="background:#ffd94d"></i>HDG <i class="dot" style="background:#3dff8e"></i>COG · °</span><b id="cHdgV">--</b></div>
     <canvas class="chart" id="cHdg" width="528" height="132"></canvas>
+  </div>
+  <div class="cell">
+    <div class="hd"><span>ROT · °/min</span><b id="cRotV">--</b></div>
+    <canvas class="chart" id="cRot" width="528" height="132"></canvas>
+  </div>
+  <div class="cell">
+    <div class="hd"><span>DEPTH · m</span><b id="cDepthV">--</b></div>
+    <canvas class="chart" id="cDepth" width="528" height="132"></canvas>
+  </div>
+  <div class="cell">
+    <div class="hd"><span>XTE · m</span><b id="cXteV">--</b></div>
+    <canvas class="chart" id="cXte" width="528" height="132"></canvas>
   </div>
   <div class="cell">
     <div class="hd"><span>WIND · kn</span><b id="cWindV">--</b></div>
@@ -456,6 +471,7 @@ function respawnSpray(i) {
 /* ============ navigation simulation ============ */
 const LAT0 = 20.8650, LON0 = 106.6840, M_PER_UNIT = 15;
 let u = 0, sailing = true, headingDeg = 0, sogKn = 0, windNow = 13, foamFade = 0;
+let cogDeg = 0, rotNow = 0, xteNow = 0, stwNow = 0, prevHeading = 0;
 const LOOP_SEC = 170;
 const shipPos = new THREE.Vector3(), prevPos = new THREE.Vector3();
 let firstFrame = true;
@@ -475,10 +491,11 @@ function nearestWptDist(p) {
 function sensors(t) {
   const turn = Math.abs(Math.sin(u * Math.PI * 4));
   const sog = 8.4 - turn * 1.6 + Math.sin(t * 0.35) * 0.35 + Math.sin(t * 1.7) * 0.12;
+  const stw = sog + 0.7 + Math.sin(t * 0.11) * 0.55;
   const wind = 13.5 + Math.sin(t * 0.21 + 1.3) * 3.2 + Math.sin(t * 0.9) * 0.8;
   const windDir = (205 + Math.sin(t * 0.05) * 25 + 360) % 360;
   const depth = 21 + Math.sin(shipPos.x * 0.021) * 4.5 + Math.cos(shipPos.z * 0.017) * 3.5;
-  return { sog, wind, windDir, depth };
+  return { sog, stw, wind, windDir, depth };
 }
 function beaufort(kn) { return kn < 1 ? 0 : kn < 4 ? 1 : kn < 7 ? 2 : kn < 11 ? 3 : kn < 17 ? 4 : kn < 22 ? 5 : 6; }
 
@@ -640,31 +657,46 @@ function drawCompass(windDir) {
 }
 
 /* ============ charts ============ */
-function makeChart(id) {
+function makeChart(id, colors) {
   const ctx = document.getElementById(id).getContext('2d');
-  return { ctx, data: [], push(v) { this.data.push(v); if (this.data.length > 110) this.data.shift(); } };
+  return { ctx, lines: colors.map(c => ({ color: c, data: [] })) };
 }
-const chSog = makeChart('cSog'), chHdg = makeChart('cHdg'), chWind = makeChart('cWind');
-function drawChart(ch, min, max, color, fill) {
-  const { ctx, data } = ch, W = 528, H = 132;
+function pushChart(ch, vals) {
+  ch.lines.forEach((L, i) => { L.data.push(vals[i]); if (L.data.length > 110) L.data.shift(); });
+}
+const chSpd = makeChart('cSog', ['#53f2ff', '#ffffff']);
+const chHdgCog = makeChart('cHdg', ['#ffd94d', '#3dff8e']);
+const chRot = makeChart('cRot', ['#e08fff']);
+const chDepth = makeChart('cDepth', ['#6fb7ff']);
+const chXte = makeChart('cXte', ['#ffb04d']);
+const chWind = makeChart('cWind', ['#3dff8e']);
+function drawChart(ch, min, max, opts = {}) {
+  const { ctx } = ch, W = 528, H = 132;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = 'rgba(4,24,44,0.55)'; ctx.fillRect(0, 0, W, H);
   ctx.strokeStyle = 'rgba(96,190,255,0.18)'; ctx.lineWidth = 1;
   for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(0, H * i / 4); ctx.lineTo(W, H * i / 4); ctx.stroke(); }
   for (let i = 1; i < 6; i++) { ctx.beginPath(); ctx.moveTo(W * i / 6, 0); ctx.lineTo(W * i / 6, H); ctx.stroke(); }
+  if (opts.zero && min < 0 && max > 0) {
+    const zy = H - (0 - min) / (max - min) * (H - 12) - 6;
+    ctx.strokeStyle = 'rgba(207,234,255,0.45)'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(0, zy); ctx.lineTo(W, zy); ctx.stroke();
+  }
   ctx.fillStyle = 'rgba(127,168,201,0.9)'; ctx.font = '14px monospace';
   ctx.fillText(max.toFixed(0), 6, 16); ctx.fillText(min.toFixed(0), 6, H - 5);
-  if (data.length < 2) return;
-  /* filled area under the line — modern look */
-  ctx.beginPath();
-  data.forEach((v, i) => {
-    const x = i / 109 * W, y = H - (v - min) / (max - min) * (H - 12) - 6;
-    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-  });
-  ctx.strokeStyle = color; ctx.lineWidth = 2.4; ctx.stroke();
-  ctx.lineTo((data.length - 1) / 109 * W, H); ctx.lineTo(0, H); ctx.closePath();
-  ctx.fillStyle = fill;
-  ctx.fill();
+  for (const L of ch.lines) {
+    if (L.data.length < 2) continue;
+    ctx.beginPath();
+    L.data.forEach((v, i) => {
+      const x = i / 109 * W, y = H - (v - min) / (max - min) * (H - 12) - 6;
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.strokeStyle = L.color; ctx.lineWidth = 2.3; ctx.stroke();
+    if (opts.fill && ch.lines.length === 1) {
+      ctx.lineTo((L.data.length - 1) / 109 * W, H); ctx.lineTo(0, H); ctx.closePath();
+      ctx.fillStyle = opts.fill; ctx.fill();
+    }
+  }
 }
 
 /* ============ HUD ============ */
@@ -679,16 +711,19 @@ function updateHud(t) {
   el('tLat').textContent = fmtLat(lat);
   el('tLon').textContent = fmtLon(lon);
   el('tHdg').innerHTML = headingDeg.toFixed(1) + '<em>°</em>';
-  el('tCog').innerHTML = headingDeg.toFixed(1) + '<em>°</em>';
+  el('tCog').innerHTML = cogDeg.toFixed(1) + '<em>°</em>';
   el('tSog').innerHTML = s.sog.toFixed(1) + '<em>kn</em>';
   el('tWind').innerHTML = s.wind.toFixed(0) + '<em>kn</em> ' + s.windDir.toFixed(0) + '<em>°</em>';
   el('tSea').innerHTML = 'BF ' + beaufort(s.wind) + '<em>cấp</em>';
   el('tDepth').innerHTML = s.depth.toFixed(1) + '<em>m</em>';
   el('tRng').innerHTML = (rng / 1852).toFixed(2) + '<em>NM → WPT' + wpt + '</em>';
-  el('cSogV').textContent = s.sog.toFixed(1);
-  el('cHdgV').textContent = headingDeg.toFixed(0);
+  el('cSogV').textContent = s.sog.toFixed(1) + ' / ' + s.stw.toFixed(1);
+  el('cHdgV').textContent = headingDeg.toFixed(0) + ' / ' + cogDeg.toFixed(0);
+  el('cRotV').textContent = (rotNow >= 0 ? '+' : '') + rotNow.toFixed(0);
+  el('cDepthV').textContent = s.depth.toFixed(1);
+  el('cXteV').textContent = (xteNow >= 0 ? '+' : '') + xteNow.toFixed(0);
   el('cWindV').textContent = s.wind.toFixed(0);
-  sogKn = s.sog; windNow = s.wind;
+  sogKn = s.sog; windNow = s.wind; stwNow = s.stw;
   window.__sog = s.sog; window.__hdg = headingDeg; window.__trail = trailPts.length;
   drawCompass(s.windDir);
 }
@@ -728,8 +763,21 @@ function animate() {
     if (sailing) u = (u + dt / LOOP_SEC) % 1;
     const p = curve.getPointAt(u);
     const tan = curve.getTangentAt(u);
-    shipPos.set(p.x, 0, p.z);
+    /* imperfect steering: the ship weaves a little around the planned track (real XTE) */
+    const weave = sailing ? Math.sin(u * Math.PI * 6) * 2.0 + Math.sin(t * 0.23) * 1.1 : 0;
+    shipPos.set(p.x - tan.z * weave, 0, p.z + tan.x * weave);
+    xteNow = weave * M_PER_UNIT;
     headingDeg = (Math.atan2(tan.x, tan.z) * 180 / Math.PI + 360) % 360;
+    /* rate of turn from the heading derivative, smoothed */
+    if (dt > 0) {
+      let dh = headingDeg - prevHeading;
+      dh = ((dh + 540) % 360) - 180;
+      const rotInst = sailing ? dh / dt * 60 * 0.18 : 0;
+      rotNow += (THREE.MathUtils.clamp(rotInst, -60, 60) - rotNow) * 0.12;
+    }
+    if (firstFrame) prevHeading = headingDeg; else prevHeading = headingDeg;
+    /* COG drifts off HDG under wind + current (leeway) */
+    cogDeg = (headingDeg + (sailing ? 1.8 * Math.sin(t * 0.07) + 1.1 * Math.sin(t * 0.19 + 2) : 0) + 360) % 360;
     const yaw = Math.atan2(-tan.z, tan.x);
     /* heave/pitch/roll sampled from the real wave field */
     const hC = waveH(shipPos.x, shipPos.z, t);
@@ -809,10 +857,18 @@ function animate() {
     if (t - lastHud > 0.15) { lastHud = t; updateHud(t); drawMinimap(); }
     if (t - lastChart > 0.45) {
       lastChart = t;
-      chSog.push(sogKn); chHdg.push(headingDeg); chWind.push(windNow);
-      drawChart(chSog, 4, 12, '#53f2ff', 'rgba(83,242,255,0.13)');
-      drawChart(chHdg, 0, 360, '#ffd94d', 'rgba(255,217,77,0.13)');
-      drawChart(chWind, 4, 24, '#3dff8e', 'rgba(61,255,142,0.13)');
+      pushChart(chSpd, [sogKn, stwNow]);
+      pushChart(chHdgCog, [headingDeg, cogDeg]);
+      pushChart(chRot, [rotNow]);
+      pushChart(chDepth, [sensors(t).depth]);
+      pushChart(chXte, [xteNow]);
+      pushChart(chWind, [windNow]);
+      drawChart(chSpd, 4, 12);
+      drawChart(chHdgCog, 0, 360);
+      drawChart(chRot, -40, 40, { zero: true });
+      drawChart(chDepth, 10, 32, { fill: 'rgba(111,183,255,0.13)' });
+      drawChart(chXte, -60, 60, { zero: true });
+      drawChart(chWind, 4, 24, { fill: 'rgba(61,255,142,0.13)' });
     }
   }
   controls.update();
