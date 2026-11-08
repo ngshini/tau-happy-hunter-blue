@@ -11,48 +11,50 @@
   #scene { position:fixed; inset:0; display:block; cursor:grab; }
   #scene:active { cursor:grabbing; }
   .hud { position:fixed; z-index:10; color:#cfeaff;
-    background:rgba(5,26,48,.72); border:1px solid rgba(96,190,255,.35);
+    background:rgba(5,26,48,.74); border:1px solid rgba(96,190,255,.38);
     border-radius:10px; backdrop-filter:blur(8px);
     box-shadow:0 8px 28px rgba(0,10,25,.45); }
-  /* ---------- telemetry readouts, top-left ---------- */
-  #telemetry { top:14px; left:14px; padding:10px 14px 9px; min-width:238px; }
+  /* telemetry, top-left */
+  #telemetry { top:14px; left:14px; padding:10px 14px 9px; min-width:242px; }
   #telemetry .hd { font-size:10px; letter-spacing:.22em; color:#6fd3ff;
     border-bottom:1px solid rgba(96,190,255,.25); padding-bottom:6px; margin-bottom:7px;
     display:flex; justify-content:space-between; }
   #telemetry .hd .live { color:#3dff8e; }
-  #telemetry .row { display:flex; justify-content:space-between; gap:18px;
-    font-size:12.5px; line-height:1.75; }
+  #telemetry .row { display:flex; justify-content:space-between; gap:18px; font-size:12.5px; line-height:1.72; }
   #telemetry .k { color:#7fa8c9; letter-spacing:.08em; }
   #telemetry .v { color:#eaf7ff; font-weight:700; }
   #telemetry .v em { font-style:normal; color:#6fd3ff; font-size:10.5px; margin-left:3px; }
-  /* ---------- minimap, top-right ---------- */
-  #minimapBox { top:14px; right:14px; padding:10px 12px 8px; }
-  #minimapBox .hd { font-size:10px; letter-spacing:.22em; color:#6fd3ff; margin-bottom:6px;
-    display:flex; justify-content:space-between; }
+  /* minimap + compass, right column */
+  #rightCol { position:fixed; top:14px; right:14px; z-index:10; display:flex; flex-direction:column; gap:10px; align-items:center; }
+  #rightCol .hud { position:relative; }
+  #minimapBox { padding:10px 12px 8px; }
+  #minimapBox .hd { font-size:10px; letter-spacing:.22em; color:#6fd3ff; margin-bottom:6px; display:flex; justify-content:space-between; }
   #minimap { display:block; width:224px; height:224px; }
-  /* ---------- charts, bottom-left ---------- */
-  #charts { left:14px; bottom:14px; padding:10px 12px 8px; display:flex; flex-direction:column; gap:8px; }
+  #compassBox { padding:8px 12px 6px; text-align:center; }
+  #compassBox .hd { font-size:10px; letter-spacing:.22em; color:#6fd3ff; margin-bottom:2px; }
+  #compass { display:block; width:158px; height:158px; }
+  /* charts, bottom-left */
+  #charts { left:14px; bottom:14px; padding:10px 12px 8px; display:flex; flex-direction:column; gap:7px; }
   #charts .hd { font-size:10px; letter-spacing:.18em; color:#6fd3ff; display:flex; justify-content:space-between; }
   #charts .hd b { color:#eaf7ff; }
-  .chart { display:block; width:264px; height:78px; }
-  /* ---------- controls, bottom-centre ---------- */
-  #controls { position:fixed; z-index:10; left:50%; bottom:14px; transform:translateX(-50%);
-    display:flex; gap:7px; }
+  .chart { display:block; width:264px; height:66px; }
+  /* controls, bottom-centre */
+  #controls { position:fixed; z-index:10; left:50%; bottom:14px; transform:translateX(-50%); display:flex; gap:7px; }
   #controls button { font:inherit; font-size:11px; letter-spacing:.06em; cursor:pointer;
-    color:#cfeaff; background:rgba(5,26,48,.75); border:1px solid rgba(96,190,255,.4);
+    color:#cfeaff; background:rgba(5,26,48,.78); border:1px solid rgba(96,190,255,.4);
     border-radius:999px; padding:8px 14px; backdrop-filter:blur(8px); transition:all .18s; }
   #controls button:hover { border-color:#6fd3ff; color:#fff; }
   #controls button.on { background:#0e5f9e; border-color:#6fd3ff; color:#fff; }
-  /* ---------- loading spinner (no text) ---------- */
+  /* loading spinner (no text) */
   #loading { position:fixed; inset:0; z-index:30; display:flex; align-items:center; justify-content:center;
     background:#0a2e52; transition:opacity .6s; }
   #loading.done { opacity:0; pointer-events:none; }
   #loading .spin { width:52px; height:52px; border-radius:50%;
     border:4px solid rgba(111,211,255,.25); border-top-color:#6fd3ff; animation:sp 0.9s linear infinite; }
   @keyframes sp { to { transform:rotate(360deg); } }
-  @media (max-width:760px) {
+  @media (max-width:820px) {
     #telemetry { min-width:0; padding:8px 10px; } #telemetry .row { font-size:11px; }
-    #minimap { width:150px; height:150px; }
+    #minimap { width:148px; height:148px; } #compassBox { display:none; }
     #charts { display:none; }
   }
 </style>
@@ -62,30 +64,41 @@
 
 <div class="hud" id="telemetry">
   <div class="hd"><span>NAV · TELEMETRY</span><span class="live">● LIVE</span></div>
+  <div class="row"><span class="k">UTC</span><span class="v" id="tUtc">--:--:--</span></div>
   <div class="row"><span class="k">LAT</span><span class="v" id="tLat">--</span></div>
   <div class="row"><span class="k">LON</span><span class="v" id="tLon">--</span></div>
   <div class="row"><span class="k">HDG</span><span class="v" id="tHdg">--</span></div>
   <div class="row"><span class="k">COG</span><span class="v" id="tCog">--</span></div>
   <div class="row"><span class="k">SOG</span><span class="v" id="tSog">--</span></div>
   <div class="row"><span class="k">WIND</span><span class="v" id="tWind">--</span></div>
+  <div class="row"><span class="k">SEA</span><span class="v" id="tSea">--</span></div>
   <div class="row"><span class="k">DEPTH</span><span class="v" id="tDepth">--</span></div>
   <div class="row"><span class="k">RNG·WPT</span><span class="v" id="tRng">--</span></div>
 </div>
 
-<div class="hud" id="minimapBox">
-  <div class="hd"><span>TRACK</span><span>MINIMAP</span></div>
-  <canvas id="minimap" width="448" height="448"></canvas>
+<div id="rightCol">
+  <div class="hud" id="minimapBox">
+    <div class="hd"><span>TRACK</span><span>MINIMAP</span></div>
+    <canvas id="minimap" width="448" height="448"></canvas>
+  </div>
+  <div class="hud" id="compassBox">
+    <div class="hd">COMPASS · HDG / WIND</div>
+    <canvas id="compass" width="316" height="316"></canvas>
+  </div>
 </div>
 
 <div class="hud" id="charts">
-  <div class="hd"><span>SOG</span><b id="cSogV">-- kn</b></div>
-  <canvas class="chart" id="cSog" width="528" height="156"></canvas>
-  <div class="hd"><span>HDG</span><b id="cHdgV">-- °</b></div>
-  <canvas class="chart" id="cHdg" width="528" height="156"></canvas>
+  <div class="hd"><span>SOG · kn</span><b id="cSogV">--</b></div>
+  <canvas class="chart" id="cSog" width="528" height="132"></canvas>
+  <div class="hd"><span>HDG · °</span><b id="cHdgV">--</b></div>
+  <canvas class="chart" id="cHdg" width="528" height="132"></canvas>
+  <div class="hd"><span>WIND · kn</span><b id="cWindV">--</b></div>
+  <canvas class="chart" id="cWind" width="528" height="132"></canvas>
 </div>
 
 <div id="controls">
-  <button data-view="chase" class="on">CAM · ĐUÔI</button>
+  <button data-view="cine" class="on">🎬 CINE</button>
+  <button data-view="chase">CAM · ĐUÔI</button>
   <button data-view="bow">CAM · MŨI</button>
   <button data-view="top">CAM · TRÊN</button>
   <button data-view="orbit">CAM · TOÀN CẢNH</button>
@@ -95,10 +108,7 @@
 <div id="loading"><div class="spin"></div></div>
 
 <script type="importmap">
-{ "imports": {
-  "three": "./three.module.js",
-  "three/addons/": "./addons/"
-} }
+{ "imports": { "three": "./three.module.js", "three/addons/": "./addons/" } }
 </script>
 <script type="module">
 import * as THREE from 'three';
@@ -106,7 +116,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-/* ================= renderer / scene ================= */
+/* ============ renderer / scene ============ */
 const canvas = document.getElementById('scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -117,16 +127,15 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.1;
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x9fd2f2, 260, 620);
-const camera = new THREE.PerspectiveCamera(46, innerWidth/innerHeight, 0.1, 2000);
-camera.position.set(120, 26, 60);
+scene.fog = new THREE.Fog(0x9fd2f2, 280, 640);
+const camera = new THREE.PerspectiveCamera(46, innerWidth/innerHeight, 0.1, 2200);
+camera.position.set(140, 30, 80);
 
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 scene.environmentIntensity = 0.5;
 scene.add(new THREE.HemisphereLight(0xd8ecff, 0x1c4d75, 0.55));
 const sun = new THREE.DirectionalLight(0xfff2dd, 2.4);
-sun.position.set(90, 130, 50);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.left = -160; sun.shadow.camera.right = 160;
@@ -140,14 +149,17 @@ scene.add(sun); scene.add(sun.target);
   gr.addColorStop(0,'#5fa8dd'); gr.addColorStop(0.55,'#9fd2f2'); gr.addColorStop(0.78,'#d8f0fc'); gr.addColorStop(1,'#eaf7ff');
   g.fillStyle = gr; g.fillRect(0,0,4,256);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(880, 24, 16),
-    new THREE.MeshBasicMaterial({ map:tex, side:THREE.BackSide, fog:false }));
-  scene.add(sky);
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(900, 24, 16),
+    new THREE.MeshBasicMaterial({ map:tex, side:THREE.BackSide, fog:false })));
 }
 
-/* sea — clear blue, animated vertices */
+/* ============ sea ============ */
+/* wave height in world coords — shared by the mesh and the ship's motion */
+function waveH(wx, wz, t) {
+  return Math.sin(wx * 0.055 + t * 0.9) * 0.55 + Math.cos(wz * 0.045 - t * 0.7) * 0.5;
+}
 const ocean = new THREE.Mesh(
-  new THREE.PlaneGeometry(760, 760, 96, 96),
+  new THREE.PlaneGeometry(820, 820, 92, 92),
   new THREE.MeshStandardMaterial({ color:0x1773c4, roughness:0.5, metalness:0.0, transparent:true, opacity:0.94 }));
 ocean.material.envMapIntensity = 0.55;
 ocean.rotation.x = -Math.PI/2; ocean.receiveShadow = true;
@@ -155,7 +167,7 @@ scene.add(ocean);
 const seaPos = ocean.geometry.attributes.position;
 const seaBase = seaPos.array.slice();
 
-/* ================= route ================= */
+/* ============ route ============ */
 const WPT = [
   [ 95, -45], [ 45, -88], [-45, -84], [-98, -30],
   [-84,  42], [-15,  88], [ 58,  74], [ 98,  22]
@@ -163,63 +175,189 @@ const WPT = [
 const curve = new THREE.CatmullRomCurve3(
   WPT.map(p => new THREE.Vector3(p[0], 0, p[1])), true, 'catmullrom', 0.6);
 const routePts = curve.getPoints(360);
-
-/* planned route — faint dashed line on the water */
 {
-  const g = new THREE.BufferGeometry().setFromPoints(routePts.map(p => new THREE.Vector3(p.x, 0.32, p.z)));
+  const g = new THREE.BufferGeometry().setFromPoints(routePts.map(p => new THREE.Vector3(p.x, 0.34, p.z)));
   const route = new THREE.LineLoop(g, new THREE.LineDashedMaterial({
-    color:0xbfe6ff, dashSize:3.2, gapSize:2.4, transparent:true, opacity:0.5 }));
+    color:0xd6f1ff, dashSize:3.2, gapSize:2.4, transparent:true, opacity:0.75 }));
   route.computeLineDistances();
   scene.add(route);
 }
+/* glowing pulses travelling along the planned route */
+const pulses = [];
+for (let i = 0; i < 5; i++) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(1.05, 12, 10),
+    new THREE.MeshBasicMaterial({ color:0x9beaff }));
+  scene.add(m); pulses.push(m);
+}
 
-/* sailed track — bright trail that grows behind the ship */
+/* sailed track: bright ribbon (wide, glowing) built from the trail points */
 const TRAIL_MAX = 900;
-const trailPos = new Float32Array(TRAIL_MAX * 3);
-const trailGeo = new THREE.BufferGeometry();
-trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
-trailGeo.setDrawRange(0, 0);
-const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({
-  color:0x53f2ff, transparent:true, opacity:0.95 }));
-trail.frustumCulled = false;
-scene.add(trail);
-const trailPts = [];            // Vector3 history, for minimap too
+const trailPts = [];
+const ribbonPos = new Float32Array(TRAIL_MAX * 2 * 3);
+const ribbonGeo = new THREE.BufferGeometry();
+ribbonGeo.setAttribute('position', new THREE.BufferAttribute(ribbonPos, 3));
+{
+  const idx = [];
+  for (let i = 0; i < TRAIL_MAX - 1; i++) {
+    const a = i * 2;
+    idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+  }
+  ribbonGeo.setIndex(idx);
+}
+const ribbon = new THREE.Mesh(ribbonGeo, new THREE.MeshBasicMaterial({
+  color:0x2fd8f2, transparent:true, opacity:0.55, side:THREE.DoubleSide,
+  blending:THREE.AdditiveBlending, depthWrite:false }));
+ribbon.frustumCulled = false;
+scene.add(ribbon);
+function rebuildRibbon() {
+  const n = trailPts.length, W2 = 1.5;
+  for (let i = 0; i < n; i++) {
+    const p = trailPts[i];
+    const q = trailPts[Math.min(i + 1, n - 1)], q0 = trailPts[Math.max(i - 1, 0)];
+    let dx = q.x - q0.x, dz = q.z - q0.z;
+    const L = Math.hypot(dx, dz) || 1; dx /= L; dz /= L;
+    const px = -dz, pz = dx;
+    ribbonPos[i * 6]     = p.x - px * W2; ribbonPos[i * 6 + 1] = 0.36; ribbonPos[i * 6 + 2] = p.z - pz * W2;
+    ribbonPos[i * 6 + 3] = p.x + px * W2; ribbonPos[i * 6 + 4] = 0.36; ribbonPos[i * 6 + 5] = p.z + pz * W2;
+  }
+  ribbonGeo.attributes.position.needsUpdate = true;
+  ribbonGeo.setDrawRange(0, Math.max(0, (n - 1) * 6));
+}
 
-/* ================= ship ================= */
+/* ============ scenery: buoys, island, lighthouse, distant ship ============ */
+const buoys = [];
+{
+  const red = new THREE.MeshStandardMaterial({ color:0xd8322a, roughness:0.6 });
+  const grn = new THREE.MeshStandardMaterial({ color:0x1d9e57, roughness:0.6 });
+  const dark = new THREE.MeshStandardMaterial({ color:0x22282e, roughness:0.8 });
+  for (let i = 0; i < 12; i++) {
+    const uu = i / 12 + 0.045;
+    const p = curve.getPointAt(uu), tg = curve.getTangentAt(uu);
+    const side = i % 2 ? 1 : -1;
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1.05, 2.2, 10), i % 2 ? grn : red);
+    body.position.y = 0.6; g.add(body);
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.6, 6), dark);
+    top.position.y = 2.3; g.add(top);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8),
+      new THREE.MeshBasicMaterial({ color: i % 2 ? 0x3dff8e : 0xff5347 }));
+    lamp.position.y = 3.2; g.add(lamp);
+    g.position.set(p.x - tg.z * side * 17, 0, p.z + tg.x * side * 17);
+    scene.add(g); buoys.push(g);
+  }
+  /* island + lighthouse */
+  const isl = new THREE.Group();
+  const rock = new THREE.MeshStandardMaterial({ color:0x5d7263, roughness:1 });
+  const m1 = new THREE.Mesh(new THREE.ConeGeometry(46, 17, 9), rock); m1.position.y = 2; isl.add(m1);
+  const m2 = new THREE.Mesh(new THREE.ConeGeometry(30, 12, 8), rock); m2.position.set(30, 1, 14); isl.add(m2);
+  const lh = new THREE.Group();
+  const white = new THREE.MeshStandardMaterial({ color:0xf2f5f7, roughness:0.5 });
+  const band = new THREE.MeshStandardMaterial({ color:0xd8322a, roughness:0.5 });
+  const t1 = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.9, 15, 12), white); t1.position.y = 7.5; lh.add(t1);
+  const t2 = new THREE.Mesh(new THREE.CylinderGeometry(2.45, 2.6, 3.4, 12), band); t2.position.y = 9.5; lh.add(t2);
+  const lampM = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 2.4, 10),
+    new THREE.MeshBasicMaterial({ color:0xffe9a3 })); lampM.position.y = 16.2; lh.add(lampM);
+  lh.position.set(-8, 12, -6); isl.add(lh);
+  isl.position.set(268, 0, 168);
+  scene.add(isl);
+  /* distant anchored ship silhouette */
+  const far = new THREE.Group();
+  const grey = new THREE.MeshStandardMaterial({ color:0x51606c, roughness:0.9 });
+  const hullF = new THREE.Mesh(new THREE.BoxGeometry(52, 6, 9), grey); hullF.position.y = 2.5; far.add(hullF);
+  const ssF = new THREE.Mesh(new THREE.BoxGeometry(9, 10, 8), grey); ssF.position.set(-18, 10, 0); far.add(ssF);
+  const crF = new THREE.Mesh(new THREE.BoxGeometry(1.2, 14, 1.2), grey); crF.position.set(8, 11, 0); far.add(crF);
+  far.position.set(-268, 0, -30); far.rotation.y = 0.7;
+  scene.add(far);
+}
+
+/* ============ ship (outer: position+yaw, inner: pitch/roll from waves) ============ */
 const ship = new THREE.Group();
-scene.add(ship);
+const tilt = new THREE.Group();
+ship.add(tilt); scene.add(ship);
 let shipReady = false;
 new GLTFLoader().load('happy-hunter-blue.glb', (gltf) => {
   const model = gltf.scene;
   model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; if (o.material) o.material.envMapIntensity = 0.7; } });
-  ship.add(model);
+  tilt.add(model);
   shipReady = true; window.__shipReady = true;
   document.getElementById('loading').classList.add('done');
 }, undefined, (e) => console.error('GLB load error', e));
 
-/* ================= navigation simulation ================= */
+/* wake: centre foam strip + two V arms, textures fade along length and edges */
+function wakeTexture() {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+  const g = c.getContext('2d');
+  const img = g.createImageData(256, 64);
+  for (let y = 0; y < 64; y++) for (let x = 0; x < 256; x++) {
+    const along = 1 - x / 255;                       // opaque at stern (x=0), fades out
+    const edge = Math.sin(Math.PI * y / 63);        // soft side edges
+    const a = Math.pow(along, 1.5) * Math.pow(edge, 1.4) * 235;
+    const i = (y * 256 + x) * 4;
+    img.data[i] = 235; img.data[i + 1] = 250; img.data[i + 2] = 255; img.data[i + 3] = a;
+  }
+  g.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  return tex;
+}
+const wakeTex = wakeTexture();
+function wakePlane(len, wid) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(len, wid),
+    new THREE.MeshBasicMaterial({ map:wakeTex, transparent:true, opacity:0.85, depthWrite:false }));
+  m.rotation.x = -Math.PI / 2;
+  m.rotation.z = Math.PI; // texture x=0 (bright end) at the stern side
+  return m;
+}
+const wakeC = wakePlane(64, 10); wakeC.position.set(-26 - 32, 0.3, 0); ship.add(wakeC);
+const wakeL = wakePlane(52, 5.5); wakeL.position.set(-26 - 21, 0.3, 8.5); wakeL.rotation.z = Math.PI - 0.30; ship.add(wakeL);
+const wakeR = wakePlane(52, 5.5); wakeR.position.set(-26 - 21, 0.3, -8.5); wakeR.rotation.z = Math.PI + 0.30; ship.add(wakeR);
+
+/* bow spray particles (ship-local space) */
+const SPRAY_N = 150;
+const sprayPos = new Float32Array(SPRAY_N * 3);
+const sprayVel = [];
+for (let i = 0; i < SPRAY_N; i++) { sprayVel.push(new THREE.Vector3()); sprayPos[i * 3 + 1] = -10; }
+const sprayGeo = new THREE.BufferGeometry();
+sprayGeo.setAttribute('position', new THREE.BufferAttribute(sprayPos, 3));
+let sprayTex;
+{
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(32, 32, 2, 32, 32, 30);
+  gr.addColorStop(0, 'rgba(255,255,255,0.95)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  sprayTex = new THREE.CanvasTexture(c);
+}
+const spray = new THREE.Points(sprayGeo, new THREE.PointsMaterial({
+  size:2.1, map:sprayTex, transparent:true, opacity:0.75, depthWrite:false, color:0xf4fbff }));
+spray.frustumCulled = false;
+ship.add(spray);
+function respawnSpray(i) {
+  const s = Math.random() < 0.5 ? -1 : 1;
+  sprayPos[i * 3] = 23.5 + Math.random() * 2.5;
+  sprayPos[i * 3 + 1] = 0.6;
+  sprayPos[i * 3 + 2] = s * (1.6 + Math.random() * 0.9);
+  sprayVel[i].set(-(1.5 + Math.random() * 2.5), 2.2 + Math.random() * 2.4, s * (1.6 + Math.random() * 2.0));
+}
+
+/* ============ navigation simulation ============ */
 const LAT0 = 20.8650, LON0 = 106.6840, M_PER_UNIT = 15;
-let u = 0, sailing = true, headingDeg = 0, sogKn = 0;
+let u = 0, sailing = true, headingDeg = 0, sogKn = 0, windNow = 13;
 const LOOP_SEC = 170;
 const shipPos = new THREE.Vector3(), prevPos = new THREE.Vector3();
 let firstFrame = true;
+const t0 = performance.now();
 
 function geoOf(p) {
-  const lat = LAT0 + (-p.z * M_PER_UNIT) / 111320;
-  const lon = LON0 + ( p.x * M_PER_UNIT) / (111320 * Math.cos(LAT0 * Math.PI/180));
-  return [lat, lon];
+  return [LAT0 + (-p.z * M_PER_UNIT) / 111320,
+          LON0 + ( p.x * M_PER_UNIT) / (111320 * Math.cos(LAT0 * Math.PI / 180))];
 }
 function fmtLat(v) { return Math.abs(v).toFixed(5) + '° ' + (v >= 0 ? 'N' : 'S'); }
 function fmtLon(v) { return Math.abs(v).toFixed(5) + '° ' + (v >= 0 ? 'E' : 'W'); }
-
 function nearestWptDist(p) {
   let best = 1e9, bi = 0;
   WPT.forEach((w, i) => { const d = Math.hypot(p.x - w[0], p.z - w[1]); if (d < best) { best = d; bi = i; } });
   return [best * M_PER_UNIT, bi + 1];
 }
-
-/* simulated sensors */
-const t0 = performance.now();
 function sensors(t) {
   const turn = Math.abs(Math.sin(u * Math.PI * 4));
   const sog = 8.4 - turn * 1.6 + Math.sin(t * 0.35) * 0.35 + Math.sin(t * 1.7) * 0.12;
@@ -228,27 +366,32 @@ function sensors(t) {
   const depth = 21 + Math.sin(shipPos.x * 0.021) * 4.5 + Math.cos(shipPos.z * 0.017) * 3.5;
   return { sog, wind, windDir, depth };
 }
+function beaufort(kn) { return kn < 1 ? 0 : kn < 4 ? 1 : kn < 7 ? 2 : kn < 11 ? 3 : kn < 17 ? 4 : kn < 22 ? 5 : 6; }
 
-/* ================= camera follow ================= */
+/* ============ cameras ============ */
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = 0.06;
 controls.maxPolarAngle = Math.PI * 0.49;
-controls.minDistance = 12; controls.maxDistance = 260;
-
-let camMode = 'chase';
-function camOffset() {
+controls.minDistance = 12; controls.maxDistance = 300;
+let camMode = 'cine';
+function camDesired(t) {
   const h = headingDeg * Math.PI / 180;
-  const fwd = new THREE.Vector3(Math.sin(h), 0, Math.cos(h)); // ship heading in world XZ (bow +X model mapped)
-  if (camMode === 'bow')   return fwd.clone().multiplyScalar(54).add(new THREE.Vector3(0, 12, 0));
-  if (camMode === 'top')   return new THREE.Vector3(0, 95, 0.01);
-  if (camMode === 'orbit') return null;
-  return fwd.clone().multiplyScalar(-66).add(new THREE.Vector3(0, 20, 0)); // chase
+  const fx = Math.sin(h), fz = Math.cos(h);
+  if (camMode === 'chase') return shipPos.clone().add(new THREE.Vector3(-fx * 66, 20, -fz * 66));
+  if (camMode === 'bow')   return shipPos.clone().add(new THREE.Vector3(fx * 56, 13, fz * 56));
+  if (camMode === 'top')   return shipPos.clone().add(new THREE.Vector3(0, 100, 0.01));
+  if (camMode === 'cine') {
+    /* slow orbital drift around the moving ship — the ship visibly travels */
+    const az = h + Math.PI + Math.sin(t * 0.055) * 0.85;
+    const r = 64 + Math.sin(t * 0.04) * 12;
+    const y = 17 + Math.sin(t * 0.047) * 6;
+    return shipPos.clone().add(new THREE.Vector3(Math.sin(az) * r, y, Math.cos(az) * r));
+  }
+  return null; // orbit: free
 }
 document.querySelectorAll('#controls [data-view]').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('#controls [data-view]').forEach(x => x.classList.remove('on'));
   b.classList.add('on'); camMode = b.dataset.view;
-  const off = camOffset();
-  if (off) camera.position.copy(shipPos).add(off);
 }));
 const btnSail = document.getElementById('btnSail');
 btnSail.addEventListener('click', () => {
@@ -257,7 +400,7 @@ btnSail.addEventListener('click', () => {
   btnSail.classList.toggle('on', sailing);
 });
 
-/* ================= minimap ================= */
+/* ============ minimap ============ */
 const mm = document.getElementById('minimap').getContext('2d');
 const MM = 448, WORLD = 150;
 const mmX = x => (x + WORLD) / (2 * WORLD) * MM;
@@ -272,23 +415,23 @@ function drawMinimap() {
   }
   mm.strokeStyle = 'rgba(96,190,255,0.22)';
   [50, 100, 140].forEach(r => { mm.beginPath(); mm.arc(mmX(0), mmY(0), r / (2 * WORLD) * MM, 0, Math.PI * 2); mm.stroke(); });
-  /* planned route */
   mm.strokeStyle = 'rgba(160,215,255,0.45)'; mm.lineWidth = 1.6; mm.setLineDash([5, 4]);
   mm.beginPath();
   routePts.forEach((p, i) => i ? mm.lineTo(mmX(p.x), mmY(p.z)) : mm.moveTo(mmX(p.x), mmY(p.z)));
   mm.closePath(); mm.stroke(); mm.setLineDash([]);
-  /* waypoints */
   mm.fillStyle = '#eaf7ff';
   WPT.forEach(w => { mm.beginPath(); mm.arc(mmX(w[0]), mmY(w[1]), 3.2, 0, Math.PI * 2); mm.fill(); });
-  /* sailed track */
   if (trailPts.length > 1) {
-    mm.strokeStyle = '#53f2ff'; mm.lineWidth = 2.4; mm.beginPath();
+    mm.strokeStyle = '#53f2ff'; mm.lineWidth = 2.6; mm.beginPath();
     trailPts.forEach((p, i) => i ? mm.lineTo(mmX(p.x), mmY(p.z)) : mm.moveTo(mmX(p.x), mmY(p.z)));
     mm.stroke();
   }
-  /* ship marker: heading in canvas coords (x east, y south) */
   const h = headingDeg * Math.PI / 180;
   const sx = mmX(shipPos.x), sy = mmY(shipPos.z);
+  /* COG vector predictor (ECDIS style) */
+  mm.strokeStyle = 'rgba(61,255,142,0.85)'; mm.lineWidth = 2; mm.setLineDash([6, 4]);
+  mm.beginPath(); mm.moveTo(sx, sy);
+  mm.lineTo(sx + Math.sin(h) * 34, sy - Math.cos(h) * 34); mm.stroke(); mm.setLineDash([]);
   const dx = Math.sin(h), dy = -Math.cos(h);
   mm.save(); mm.translate(sx, sy); mm.rotate(Math.atan2(dx, -dy));
   mm.fillStyle = '#ffd94d';
@@ -296,7 +439,6 @@ function drawMinimap() {
   mm.restore();
   mm.strokeStyle = 'rgba(255,217,77,0.5)'; mm.lineWidth = 1.4;
   mm.beginPath(); mm.arc(sx, sy, 13, 0, Math.PI * 2); mm.stroke();
-  /* north arrow + scale */
   mm.fillStyle = '#6fd3ff'; mm.font = 'bold 17px monospace'; mm.fillText('N', MM - 26, 24);
   mm.beginPath(); mm.moveTo(MM - 21, 30); mm.lineTo(MM - 16, 42); mm.lineTo(MM - 26, 42); mm.closePath(); mm.fill();
   mm.fillStyle = 'rgba(207,234,255,0.75)'; mm.font = '12px monospace';
@@ -306,66 +448,138 @@ function drawMinimap() {
   mm.beginPath(); mm.moveTo(12, MM - 20); mm.lineTo(12 + nmPx, MM - 20); mm.stroke();
 }
 
-/* ================= charts ================= */
+/* ============ compass ============ */
+const cp = document.getElementById('compass').getContext('2d');
+function drawCompass(windDir) {
+  const C = 158, R = 148, cx = C, cy = C;
+  cp.clearRect(0, 0, 316, 316);
+  cp.fillStyle = 'rgba(4,24,44,0.92)';
+  cp.beginPath(); cp.arc(cx, cy, C - 2, 0, Math.PI * 2); cp.fill();
+  cp.strokeStyle = 'rgba(96,190,255,0.5)'; cp.lineWidth = 2;
+  cp.beginPath(); cp.arc(cx, cy, C - 3, 0, Math.PI * 2); cp.stroke();
+  for (let d = 0; d < 360; d += 10) {
+    const a = d * Math.PI / 180, big = d % 30 === 0;
+    const r1 = R - (big ? 16 : 9);
+    cp.strokeStyle = 'rgba(160,215,255,0.55)'; cp.lineWidth = big ? 2.4 : 1.2;
+    cp.beginPath();
+    cp.moveTo(cx + Math.sin(a) * r1, cy - Math.cos(a) * r1);
+    cp.lineTo(cx + Math.sin(a) * R, cy - Math.cos(a) * R);
+    cp.stroke();
+  }
+  cp.font = 'bold 21px monospace'; cp.textAlign = 'center'; cp.textBaseline = 'middle';
+  cp.fillStyle = '#ff5347'; cp.fillText('N', cx, cy - R + 32);
+  cp.fillStyle = '#cfeaff';
+  cp.fillText('E', cx + R - 32, cy); cp.fillText('S', cx, cy + R - 32); cp.fillText('W', cx - R + 32, cy);
+  /* wind arrow (points where wind blows FROM, cyan) */
+  const wa = windDir * Math.PI / 180;
+  cp.strokeStyle = '#53f2ff'; cp.lineWidth = 3.4;
+  cp.beginPath();
+  cp.moveTo(cx + Math.sin(wa) * (R - 40), cy - Math.cos(wa) * (R - 40));
+  cp.lineTo(cx + Math.sin(wa) * (R - 74), cy - Math.cos(wa) * (R - 74));
+  cp.stroke();
+  cp.fillStyle = '#53f2ff';
+  cp.save(); cp.translate(cx + Math.sin(wa) * (R - 74), cy - Math.cos(wa) * (R - 74)); cp.rotate(wa + Math.PI);
+  cp.beginPath(); cp.moveTo(0, -8); cp.lineTo(5, 5); cp.lineTo(-5, 5); cp.closePath(); cp.fill(); cp.restore();
+  /* heading needle */
+  const h = headingDeg * Math.PI / 180;
+  cp.fillStyle = '#ffd94d';
+  cp.save(); cp.translate(cx, cy); cp.rotate(h);
+  cp.beginPath(); cp.moveTo(0, -R + 44); cp.lineTo(8, 14); cp.lineTo(-8, 14); cp.closePath(); cp.fill();
+  cp.restore();
+  cp.fillStyle = 'rgba(5,26,48,0.9)';
+  cp.beginPath(); cp.arc(cx, cy, 40, 0, Math.PI * 2); cp.fill();
+  cp.strokeStyle = 'rgba(96,190,255,0.4)'; cp.lineWidth = 1.4;
+  cp.beginPath(); cp.arc(cx, cy, 40, 0, Math.PI * 2); cp.stroke();
+  cp.fillStyle = '#eaf7ff'; cp.font = 'bold 25px monospace';
+  cp.fillText(headingDeg.toFixed(0) + '°', cx, cy - 4);
+  cp.fillStyle = '#7fa8c9'; cp.font = '13px monospace';
+  cp.fillText('HDG', cx, cy + 20);
+  cp.textAlign = 'left'; cp.textBaseline = 'alphabetic';
+}
+
+/* ============ charts ============ */
 function makeChart(id) {
   const ctx = document.getElementById(id).getContext('2d');
   return { ctx, data: [], push(v) { this.data.push(v); if (this.data.length > 110) this.data.shift(); } };
 }
-const chSog = makeChart('cSog'), chHdg = makeChart('cHdg');
-function drawChart(ch, min, max, color, fmt) {
-  const { ctx, data } = ch, W = 528, H = 156;
+const chSog = makeChart('cSog'), chHdg = makeChart('cHdg'), chWind = makeChart('cWind');
+function drawChart(ch, min, max, color, fill) {
+  const { ctx, data } = ch, W = 528, H = 132;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = 'rgba(4,24,44,0.55)'; ctx.fillRect(0, 0, W, H);
   ctx.strokeStyle = 'rgba(96,190,255,0.18)'; ctx.lineWidth = 1;
   for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(0, H * i / 4); ctx.lineTo(W, H * i / 4); ctx.stroke(); }
   for (let i = 1; i < 6; i++) { ctx.beginPath(); ctx.moveTo(W * i / 6, 0); ctx.lineTo(W * i / 6, H); ctx.stroke(); }
-  ctx.fillStyle = 'rgba(127,168,201,0.9)'; ctx.font = '15px monospace';
-  ctx.fillText(fmt(max), 6, 17); ctx.fillText(fmt(min), 6, H - 6);
+  ctx.fillStyle = 'rgba(127,168,201,0.9)'; ctx.font = '14px monospace';
+  ctx.fillText(max.toFixed(0), 6, 16); ctx.fillText(min.toFixed(0), 6, H - 5);
   if (data.length < 2) return;
-  ctx.strokeStyle = color; ctx.lineWidth = 2.4; ctx.beginPath();
+  /* filled area under the line — modern look */
+  ctx.beginPath();
   data.forEach((v, i) => {
-    const x = i / 109 * W, y = H - (v - min) / (max - min) * (H - 14) - 7;
+    const x = i / 109 * W, y = H - (v - min) / (max - min) * (H - 12) - 6;
     i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
   });
-  ctx.stroke();
+  ctx.strokeStyle = color; ctx.lineWidth = 2.4; ctx.stroke();
+  ctx.lineTo((data.length - 1) / 109 * W, H); ctx.lineTo(0, H); ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
 }
 
-/* ================= HUD update ================= */
+/* ============ HUD ============ */
 const el = id => document.getElementById(id);
 let lastHud = 0, lastTrail = 0, lastChart = 0;
 function updateHud(t) {
   const s = sensors(t);
   const [lat, lon] = geoOf(shipPos);
   const [rng, wpt] = nearestWptDist(shipPos);
+  const now = new Date();
+  el('tUtc').textContent = now.toISOString().slice(11, 19);
   el('tLat').textContent = fmtLat(lat);
   el('tLon').textContent = fmtLon(lon);
   el('tHdg').innerHTML = headingDeg.toFixed(1) + '<em>°</em>';
   el('tCog').innerHTML = headingDeg.toFixed(1) + '<em>°</em>';
   el('tSog').innerHTML = s.sog.toFixed(1) + '<em>kn</em>';
   el('tWind').innerHTML = s.wind.toFixed(0) + '<em>kn</em> ' + s.windDir.toFixed(0) + '<em>°</em>';
+  el('tSea').innerHTML = 'BF ' + beaufort(s.wind) + '<em>cấp</em>';
   el('tDepth').innerHTML = s.depth.toFixed(1) + '<em>m</em>';
   el('tRng').innerHTML = (rng / 1852).toFixed(2) + '<em>NM → WPT' + wpt + '</em>';
-  el('cSogV').textContent = s.sog.toFixed(1) + ' kn';
-  el('cHdgV').textContent = headingDeg.toFixed(0) + ' °';
-  sogKn = s.sog;
+  el('cSogV').textContent = s.sog.toFixed(1);
+  el('cHdgV').textContent = headingDeg.toFixed(0);
+  el('cWindV').textContent = s.wind.toFixed(0);
+  sogKn = s.sog; windNow = s.wind;
   window.__sog = s.sog; window.__hdg = headingDeg; window.__trail = trailPts.length;
+  drawCompass(s.windDir);
 }
 
-/* ================= main loop ================= */
+/* ============ main loop ============ */
 const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = (performance.now() - t0) / 1000;
 
-  /* sea waves */
+  /* sea surface (local plane coords: world z = -local y) */
   const pos = ocean.geometry.attributes.position;
   for (let i = 0; i < pos.count; i++) {
-    const x = seaBase[i * 3], y = seaBase[i * 3 + 1];
-    pos.array[i * 3 + 2] = Math.sin(x * 0.055 + t * 0.9) * 0.55 + Math.cos(y * 0.045 + t * 0.7) * 0.5;
+    const lx = seaBase[i * 3], ly = seaBase[i * 3 + 1];
+    pos.array[i * 3 + 2] = waveH(lx, -ly, t);
   }
   pos.needsUpdate = true;
   ocean.geometry.computeVertexNormals();
+
+  /* buoys ride the waves */
+  for (const b of buoys) {
+    b.position.y = waveH(b.position.x, b.position.z, t) * 0.8 - 0.2;
+    b.rotation.x = Math.sin(t * 0.8 + b.position.x) * 0.05;
+    b.rotation.z = Math.cos(t * 0.7 + b.position.z) * 0.05;
+  }
+
+  /* route pulses advance */
+  pulses.forEach((m, i) => {
+    const uu = (t * 0.012 + i / pulses.length) % 1;
+    const p = curve.getPointAt(uu);
+    m.position.set(p.x, 1.1 + Math.sin(t * 2 + i) * 0.25, p.z);
+  });
 
   if (shipReady) {
     prevPos.copy(shipPos);
@@ -374,36 +588,52 @@ function animate() {
     const tan = curve.getTangentAt(u);
     shipPos.set(p.x, 0, p.z);
     headingDeg = (Math.atan2(tan.x, tan.z) * 180 / Math.PI + 360) % 360;
-    /* model bow is +X: yaw so +X follows the tangent */
-    const targetYaw = Math.atan2(-tan.z, tan.x);
-    ship.position.set(shipPos.x, Math.sin(t * 0.9) * 0.14 + 0.12, shipPos.z);
-    ship.rotation.y = targetYaw;
-    ship.rotation.z = Math.sin(t * 0.7) * 0.006 + (sailing ? Math.sin(u * Math.PI * 8) * 0.008 : 0);
-    ship.rotation.x = Math.cos(t * 0.55) * 0.004;
+    const yaw = Math.atan2(-tan.z, tan.x);
+    /* heave/pitch/roll sampled from the real wave field */
+    const hC = waveH(shipPos.x, shipPos.z, t);
+    const fx = Math.cos(yaw), fz = -Math.sin(yaw);        // bow direction in world (model +X after yaw)
+    const hB = waveH(shipPos.x + fx * 20, shipPos.z + fz * 20, t);
+    const hS = waveH(shipPos.x - fx * 20, shipPos.z - fz * 20, t);
+    const hP = waveH(shipPos.x - fz * 6, shipPos.z + fx * 6, t);
+    const hT = waveH(shipPos.x + fz * 6, shipPos.z - fx * 6, t);
+    ship.position.set(shipPos.x, hC * 0.82 + 0.1, shipPos.z);
+    ship.rotation.y = yaw;
+    tilt.rotation.z = Math.atan2(hB - hS, 40) * 0.9;      // pitch (bow up/down with the swell)
+    tilt.rotation.x = Math.atan2(hP - hT, 12) * 0.7;      // roll
+
+    /* wake + spray only while under way */
+    const wakeOn = sailing ? 0.85 : 0.0;
+    wakeC.material.opacity += (wakeOn - wakeC.material.opacity) * 0.04;
+    wakeL.material.opacity = wakeR.material.opacity = wakeC.material.opacity;
+    if (sailing) {
+      for (let i = 0; i < SPRAY_N; i++) {
+        if (sprayPos[i * 3 + 1] < 0) { if (Math.random() < 0.25) respawnSpray(i); continue; }
+        sprayVel[i].y -= 5.5 * dt;
+        sprayPos[i * 3] += sprayVel[i].x * dt;
+        sprayPos[i * 3 + 1] += sprayVel[i].y * dt;
+        sprayPos[i * 3 + 2] += sprayVel[i].z * dt;
+      }
+      sprayGeo.attributes.position.needsUpdate = true;
+    }
 
     /* trail recording */
     if (sailing && t - lastTrail > 0.35) {
       lastTrail = t;
-      trailPts.push(new THREE.Vector3(shipPos.x, 0.32, shipPos.z));
+      trailPts.push(new THREE.Vector3(shipPos.x, 0.36, shipPos.z));
       if (trailPts.length > TRAIL_MAX) trailPts.shift();
-      trailPts.forEach((q, i) => { trailPos[i * 3] = q.x; trailPos[i * 3 + 1] = q.y; trailPos[i * 3 + 2] = q.z; });
-      trailGeo.attributes.position.needsUpdate = true;
-      trailGeo.setDrawRange(0, trailPts.length);
+      rebuildRibbon();
     }
 
-    /* camera follow */
-    if (!firstFrame) {
-      const delta = shipPos.clone().sub(prevPos);
-      camera.position.add(delta);
-      if (camMode !== 'orbit') {
-        const off = camOffset();
-        const want = shipPos.clone().add(off);
-        camera.position.lerp(want, camMode === 'top' ? 0.05 : 0.035);
-      }
-    } else {
-      const off = camOffset() || new THREE.Vector3(-52, 17, 0);
-      camera.position.copy(shipPos).add(off);
+    /* camera */
+    if (firstFrame) {
+      const d0 = camDesired(t);
+      if (d0) camera.position.copy(d0);
       firstFrame = false;
+    } else if (camMode === 'orbit') {
+      camera.position.add(shipPos.clone().sub(prevPos));
+    } else {
+      const want = camDesired(t);
+      camera.position.lerp(want, camMode === 'cine' ? 0.028 : 0.05);
     }
     controls.target.set(shipPos.x, shipPos.y + 3.2, shipPos.z);
     sun.position.set(shipPos.x + 90, 130, shipPos.z + 50);
@@ -412,9 +642,10 @@ function animate() {
     if (t - lastHud > 0.15) { lastHud = t; updateHud(t); drawMinimap(); }
     if (t - lastChart > 0.45) {
       lastChart = t;
-      chSog.push(sogKn); chHdg.push(headingDeg);
-      drawChart(chSog, 4, 12, '#53f2ff', v => v.toFixed(0));
-      drawChart(chHdg, 0, 360, '#ffd94d', v => v.toFixed(0));
+      chSog.push(sogKn); chHdg.push(headingDeg); chWind.push(windNow);
+      drawChart(chSog, 4, 12, '#53f2ff', 'rgba(83,242,255,0.13)');
+      drawChart(chHdg, 0, 360, '#ffd94d', 'rgba(255,217,77,0.13)');
+      drawChart(chWind, 4, 24, '#3dff8e', 'rgba(61,255,142,0.13)');
     }
   }
   controls.update();
