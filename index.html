@@ -43,7 +43,12 @@
   #console .dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin:0 4px 1px 0; }
   #console .cell.compassCell { flex:0 0 128px; text-align:center; }
   #console .hd { font-size:9px; letter-spacing:.1em; color:#6fd3ff; display:flex; justify-content:space-between; margin-bottom:4px; white-space:nowrap; }
-  #console .hd b { color:#eaf7ff; font-size:11px; letter-spacing:0; }
+  #console .hd b { color:#eaf7ff; font-size:12.5px; letter-spacing:0; }
+  #console .cell { border-top:2px solid var(--ac, rgba(111,211,255,.5)); }
+  #console .tt { display:inline-flex; align-items:center; gap:6px; }
+  #console .ic { display:inline-flex; align-items:center; justify-content:center;
+    width:21px; height:21px; border-radius:6px; border:1px solid; flex:0 0 auto; }
+  #console .ic svg { width:14px; height:14px; }
   .chart { display:block; width:100%; height:64px; }
   #compass { display:block; width:118px; height:118px; margin:0 auto; }
   #vignette { position:fixed; inset:0; z-index:4; pointer-events:none;
@@ -94,32 +99,32 @@
 </div>
 
 <div class="hud" id="console">
-  <div class="cell">
-    <div class="hd"><span><i class="dot" style="background:#53f2ff"></i>SOG <i class="dot" style="background:#ffffff"></i>STW · kn</span><b id="cSogV">--</b></div>
+  <div class="cell" style="--ac:#53f2ff">
+    <div class="hd"><span class="tt"><span class="ic" style="color:#53f2ff;background:#53f2ff22;border-color:#53f2ff55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4.5 19a9 9 0 1 1 15 0"/><path d="M12 14l4.2-4.2"/><circle cx="12" cy="14" r="1.4" fill="currentColor"/></svg></span>SOG <i class="dot" style="background:#53f2ff"></i> STW <i class="dot" style="background:#fff"></i> · kn</span><b id="cSogV">--</b></div>
     <canvas class="chart" id="cSog" width="528" height="132"></canvas>
   </div>
-  <div class="cell">
-    <div class="hd"><span><i class="dot" style="background:#ffd94d"></i>HDG <i class="dot" style="background:#3dff8e"></i>COG · °</span><b id="cHdgV">--</b></div>
+  <div class="cell" style="--ac:#ffd94d">
+    <div class="hd"><span class="tt"><span class="ic" style="color:#ffd94d;background:#ffd94d22;border-color:#ffd94d55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8z" fill="currentColor" stroke="none"/></svg></span>HDG <i class="dot" style="background:#ffd94d"></i> COG <i class="dot" style="background:#3dff8e"></i> · °</span><b id="cHdgV">--</b></div>
     <canvas class="chart" id="cHdg" width="528" height="132"></canvas>
   </div>
-  <div class="cell">
-    <div class="hd"><span>ROT · °/min</span><b id="cRotV">--</b></div>
+  <div class="cell" style="--ac:#e08fff">
+    <div class="hd"><span class="tt"><span class="ic" style="color:#e08fff;background:#e08fff22;border-color:#e08fff55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12a8.5 8.5 0 1 1-2.5-6"/><path d="M21 3.5V8h-4.5"/></svg></span>ROT · °/min</span><b id="cRotV">--</b></div>
     <canvas class="chart" id="cRot" width="528" height="132"></canvas>
   </div>
-  <div class="cell">
-    <div class="hd"><span>DEPTH · m</span><b id="cDepthV">--</b></div>
+  <div class="cell" style="--ac:#6fb7ff">
+    <div class="hd"><span class="tt"><span class="ic" style="color:#6fb7ff;background:#6fb7ff22;border-color:#6fb7ff55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8c2.7 0 2.7 2.2 5.4 2.2S10.1 8 12.8 8s2.7 2.2 5.4 2.2S20.9 8 22 8"/><path d="M12 13v7"/><path d="M8.8 17.2L12 20.4l3.2-3.2"/></svg></span>DEPTH · m</span><b id="cDepthV">--</b></div>
     <canvas class="chart" id="cDepth" width="528" height="132"></canvas>
   </div>
-  <div class="cell">
-    <div class="hd"><span>XTE · m</span><b id="cXteV">--</b></div>
+  <div class="cell" style="--ac:#ffb04d">
+    <div class="hd"><span class="tt"><span class="ic" style="color:#ffb04d;background:#ffb04d22;border-color:#ffb04d55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="6.5"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/></svg></span>XTE · m</span><b id="cXteV">--</b></div>
     <canvas class="chart" id="cXte" width="528" height="132"></canvas>
   </div>
-  <div class="cell">
-    <div class="hd"><span>WIND · kn</span><b id="cWindV">--</b></div>
+  <div class="cell" style="--ac:#3dff8e">
+    <div class="hd"><span class="tt"><span class="ic" style="color:#3dff8e;background:#3dff8e22;border-color:#3dff8e55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h9.5a2.8 2.8 0 1 0-2.8-2.8"/><path d="M2 12h14.5a2.8 2.8 0 1 1-2.8 2.8"/><path d="M3 16.5h6"/></svg></span>WIND · kn</span><b id="cWindV">--</b></div>
     <canvas class="chart" id="cWind" width="528" height="132"></canvas>
   </div>
   <div class="cell compassCell">
-    <div class="hd"><span>COMPASS</span></div>
+    <div class="hd"><span class="tt"><span class="ic" style="color:#6fd3ff;background:#6fd3ff22;border-color:#6fd3ff55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8z" fill="currentColor" stroke="none"/></svg></span>COMPASS</span></div>
     <canvas id="compass" width="316" height="316"></canvas>
   </div>
 </div>
@@ -195,12 +200,40 @@ scene.add(sun); scene.add(sun.target);
 /* ============ sea ============ */
 /* wave height in world coords — shared by the mesh and the ship's motion */
 function waveH(wx, wz, t) {
-  return Math.sin(wx * 0.055 + t * 0.9) * 0.55 + Math.cos(wz * 0.045 - t * 0.7) * 0.5;
+  return Math.sin(wx * 0.055 + t * 0.9) * 0.78 + Math.cos(wz * 0.045 - t * 0.7) * 0.68
+       + Math.sin((wx + wz) * 0.021 + t * 0.5) * 0.4;
 }
 const ocean = new THREE.Mesh(
   new THREE.PlaneGeometry(1500, 1500, 110, 110),
   new THREE.MeshStandardMaterial({ color:0x1773c4, roughness:0.5, metalness:0.0, transparent:true, opacity:0.94 }));
 ocean.material.envMapIntensity = 0.55;
+let seaTex;
+{
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#f4f9ff'; g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 900; i++) {
+    const x = Math.random() * 256, y = Math.random() * 256, r = 2 + Math.random() * 9;
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    const tint = Math.random() < 0.5 ? '190,220,250' : '255,255,255';
+    gr.addColorStop(0, 'rgba(' + tint + ',' + (0.05 + Math.random() * 0.13) + ')');
+    gr.addColorStop(1, 'rgba(' + tint + ',0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+  }
+  for (let i = 0; i < 260; i++) {
+    g.strokeStyle = 'rgba(160,200,240,' + (0.04 + Math.random() * 0.08) + ')';
+    g.lineWidth = 1 + Math.random();
+    const x = Math.random() * 256, y = Math.random() * 256;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + 8 + Math.random() * 22, y + (Math.random() * 4 - 2)); g.stroke();
+  }
+  seaTex = new THREE.CanvasTexture(c);
+  seaTex.wrapS = seaTex.wrapT = THREE.RepeatWrapping;
+  seaTex.repeat.set(15, 15);
+  ocean.material.map = seaTex;
+  ocean.material.bumpMap = seaTex;
+  ocean.material.bumpScale = 0.7;
+  ocean.material.needsUpdate = true;
+}
 ocean.rotation.x = -Math.PI/2; ocean.receiveShadow = true;
 scene.add(ocean);
 const seaPos = ocean.geometry.attributes.position;
@@ -345,6 +378,79 @@ const clouds = [];
   }
 }
 
+/* container port on the northern horizon: quay, gantry cranes, moored ship */
+{
+  const port = new THREE.Group();
+  const conc = new THREE.MeshStandardMaterial({ color:0x5a6672, roughness:1 });
+  const steel = new THREE.MeshStandardMaterial({ color:0x39506b, roughness:0.8 });
+  const quay = new THREE.Mesh(new THREE.BoxGeometry(760, 7, 30), conc);
+  quay.position.y = 1.5; port.add(quay);
+  const contCols = [0xb5542f, 0x2f6db5, 0x3f8f57, 0x8f8f96, 0xb5a02f, 0x7455a0];
+  for (let i = 0; i < 46; i++) {
+    const col = new THREE.Mesh(new THREE.BoxGeometry(12, 5, 5.4),
+      new THREE.MeshStandardMaterial({ color: contCols[i % contCols.length], roughness: 0.85 }));
+    col.position.set(-350 + (i % 16) * 44 + (Math.random() * 10 - 5), 7.5 + Math.floor(i / 16) * 5.2, -6 + (Math.random() * 6 - 3));
+    port.add(col);
+  }
+  for (const cx of [-190, 10, 210]) {
+    const crane = new THREE.Group();
+    for (const lx of [-13, 13]) for (const lz of [-9, 9]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(2.2, 40, 2.2), steel);
+      leg.position.set(lx, 20, lz); crane.add(leg);
+    }
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(34, 3.4, 3), steel);
+    beam.position.y = 41; crane.add(beam);
+    const boom = new THREE.Mesh(new THREE.BoxGeometry(3, 2.4, 52), steel);
+    boom.position.set(0, 39.5, -14); crane.add(boom);
+    const cab = new THREE.Mesh(new THREE.BoxGeometry(4.4, 4, 4.4), steel);
+    cab.position.set(0, 36.5, -24); crane.add(cab);
+    crane.position.set(cx, 5, -4);
+    port.add(crane);
+  }
+  const bigShip = new THREE.Group();
+  const hullB = new THREE.Mesh(new THREE.BoxGeometry(180, 13, 25),
+    new THREE.MeshStandardMaterial({ color:0x6e2f26, roughness:0.9 }));
+  hullB.position.y = 4; bigShip.add(hullB);
+  for (let i = 0; i < 22; i++) {
+    const cc = new THREE.Mesh(new THREE.BoxGeometry(12.5, 5.4, 11),
+      new THREE.MeshStandardMaterial({ color: contCols[(i * 2 + 1) % contCols.length], roughness: 0.85 }));
+    cc.position.set(-72 + (i % 11) * 14.5, 13 + Math.floor(i / 11) * 5.6, (i % 2 ? -5.8 : 5.8));
+    bigShip.add(cc);
+  }
+  const ssB = new THREE.Mesh(new THREE.BoxGeometry(13, 17, 20),
+    new THREE.MeshStandardMaterial({ color:0xe8edf0, roughness:0.7 }));
+  ssB.position.set(-88, 17, 0); bigShip.add(ssB);
+  bigShip.position.set(120, 0, 34);
+  port.add(bigShip);
+  port.position.set(0, -1.4, -318);
+  scene.add(port);
+}
+/* a small workboat sailing its own wide ellipse — life in the scene */
+const boat2 = new THREE.Group();
+{
+  const hb = new THREE.Mesh(new THREE.BoxGeometry(11, 2.4, 3.8),
+    new THREE.MeshStandardMaterial({ color:0xa03a2a, roughness:0.8 }));
+  hb.position.y = 0.8; boat2.add(hb);
+  const cb = new THREE.Mesh(new THREE.BoxGeometry(3.6, 2.6, 3),
+    new THREE.MeshStandardMaterial({ color:0xf0f3f5, roughness:0.6 }));
+  cb.position.set(-2.4, 3, 0); boat2.add(cb);
+  const mb = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 5.4, 6),
+    new THREE.MeshStandardMaterial({ color:0x333a40, roughness:0.7 }));
+  mb.position.set(1.6, 4.4, 0); boat2.add(mb);
+  scene.add(boat2);
+}
+/* whitecap glints riding the wave crests */
+const CAPS_N = 380;
+const capsPos = new Float32Array(CAPS_N * 3);
+const capsXZ = [];
+for (let i = 0; i < CAPS_N; i++) {
+  const a = Math.random() * Math.PI * 2, r = 40 + Math.random() * 250;
+  capsXZ.push([Math.cos(a) * r, Math.sin(a) * r]);
+}
+const capsGeo = new THREE.BufferGeometry();
+capsGeo.setAttribute('position', new THREE.BufferAttribute(capsPos, 3));
+let caps = null;
+
 /* ============ ship (outer: position+yaw, inner: pitch/roll from waves) ============ */
 const ship = new THREE.Group();
 const tilt = new THREE.Group();
@@ -449,6 +555,10 @@ const spray = new THREE.Points(sprayGeo, new THREE.PointsMaterial({
   size:2.1, map:sprayTex, transparent:true, opacity:0.75, depthWrite:false, color:0xf4fbff }));
 spray.frustumCulled = false;
 ship.add(spray);
+caps = new THREE.Points(capsGeo, new THREE.PointsMaterial({
+  size:2.4, map:sprayTex, transparent:true, opacity:0.32, depthWrite:false, color:0xffffff }));
+caps.frustumCulled = false;
+scene.add(caps);
 wash = new THREE.Points(washGeo, new THREE.PointsMaterial({
   size:3.4, map:sprayTex, transparent:true, opacity:0.85, depthWrite:false, color:0xffffff }));
 wash.frustumCulled = false;
@@ -748,6 +858,26 @@ function animate() {
   }
   pos.needsUpdate = true;
   ocean.geometry.computeVertexNormals();
+
+  if (seaTex) { seaTex.offset.x = t * 0.006; seaTex.offset.y = t * 0.0021; }
+  /* second vessel on its own ellipse, opposite hand */
+  {
+    const bs = t * 0.0075 + 2.1;
+    const bx = -30 + Math.cos(bs) * 165, bz = 6 + Math.sin(bs) * 105;
+    const tx2 = -Math.sin(bs) * 165, tz2 = Math.cos(bs) * 105;
+    boat2.position.set(bx, waveH(bx, bz, t) * 0.75 + 0.15, bz);
+    boat2.rotation.y = Math.atan2(-tz2, tx2);
+    boat2.rotation.z = Math.sin(t * 1.1) * 0.03;
+  }
+  /* whitecap glints follow the crests */
+  if (caps) {
+    for (let i = 0; i < CAPS_N; i++) {
+      capsPos[i * 3] = capsXZ[i][0];
+      capsPos[i * 3 + 1] = waveH(capsXZ[i][0], capsXZ[i][1], t) + 0.3;
+      capsPos[i * 3 + 2] = capsXZ[i][1];
+    }
+    capsGeo.attributes.position.needsUpdate = true;
+  }
 
   /* buoys ride the waves */
   for (const b of buoys) {
