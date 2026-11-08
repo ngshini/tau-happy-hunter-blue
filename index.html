@@ -1,190 +1,429 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HAPPY HUNTER (bản xanh) — Mô hình Blender 3D trên biển</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HAPPY HUNTER — Giám sát hành trình</title>
 <style>
-  html,body{margin:0;height:100%;overflow:hidden;background:#7fb6e4;font-family:"Segoe UI",system-ui,sans-serif}
-  #app{position:fixed;inset:0}
-  canvas{display:block}
-  .panel{position:fixed;top:18px;left:18px;max-width:360px;background:rgba(8,25,47,.82);color:#eaf4ff;
-    border:1px solid rgba(140,190,255,.35);border-radius:16px;padding:16px 18px;backdrop-filter:blur(8px);z-index:5}
-  .kick{color:#ffd23e;font-size:11px;letter-spacing:2px;text-transform:uppercase}
-  .panel h1{margin:6px 0 8px;font-size:24px;color:#fff}
-  .panel h1 b{color:#ffd23e}
-  .panel p{margin:0 0 8px;font-size:13.5px;line-height:1.55;color:#cfe4ff}
-  .panel .sub{color:#9fc6ee;font-size:12.5px}
-  .bar{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;z-index:5;max-width:96vw}
-  .bar button{background:rgba(8,25,47,.85);color:#eaf4ff;border:1px solid rgba(140,190,255,.4);border-radius:999px;
-    padding:9px 15px;font-size:13.5px;cursor:pointer;backdrop-filter:blur(6px)}
-  .bar button:hover{border-color:#ffd23e;color:#ffd23e}
-  .bar button.on{background:#ffd23e;color:#12233d;border-color:#ffd23e;font-weight:600}
-  .hint{position:fixed;right:16px;bottom:16px;color:#eaf6ff;background:rgba(8,25,47,.65);padding:7px 12px;border-radius:999px;font-size:12.5px;z-index:5}
-  #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;
-    background:linear-gradient(#3f8fd2,#79b7e6);font-size:17px;z-index:9;transition:opacity .6s}
-  @media (max-width:640px){ .panel{max-width:78vw;padding:12px 14px} .panel h1{font-size:19px} .hint{display:none} }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; overflow:hidden; background:#0a2e52;
+    font-family:ui-monospace,'Cascadia Mono','JetBrains Mono',Consolas,monospace; }
+  #scene { position:fixed; inset:0; display:block; cursor:grab; }
+  #scene:active { cursor:grabbing; }
+  .hud { position:fixed; z-index:10; color:#cfeaff;
+    background:rgba(5,26,48,.72); border:1px solid rgba(96,190,255,.35);
+    border-radius:10px; backdrop-filter:blur(8px);
+    box-shadow:0 8px 28px rgba(0,10,25,.45); }
+  /* ---------- telemetry readouts, top-left ---------- */
+  #telemetry { top:14px; left:14px; padding:10px 14px 9px; min-width:238px; }
+  #telemetry .hd { font-size:10px; letter-spacing:.22em; color:#6fd3ff;
+    border-bottom:1px solid rgba(96,190,255,.25); padding-bottom:6px; margin-bottom:7px;
+    display:flex; justify-content:space-between; }
+  #telemetry .hd .live { color:#3dff8e; }
+  #telemetry .row { display:flex; justify-content:space-between; gap:18px;
+    font-size:12.5px; line-height:1.75; }
+  #telemetry .k { color:#7fa8c9; letter-spacing:.08em; }
+  #telemetry .v { color:#eaf7ff; font-weight:700; }
+  #telemetry .v em { font-style:normal; color:#6fd3ff; font-size:10.5px; margin-left:3px; }
+  /* ---------- minimap, top-right ---------- */
+  #minimapBox { top:14px; right:14px; padding:10px 12px 8px; }
+  #minimapBox .hd { font-size:10px; letter-spacing:.22em; color:#6fd3ff; margin-bottom:6px;
+    display:flex; justify-content:space-between; }
+  #minimap { display:block; width:224px; height:224px; }
+  /* ---------- charts, bottom-left ---------- */
+  #charts { left:14px; bottom:14px; padding:10px 12px 8px; display:flex; flex-direction:column; gap:8px; }
+  #charts .hd { font-size:10px; letter-spacing:.18em; color:#6fd3ff; display:flex; justify-content:space-between; }
+  #charts .hd b { color:#eaf7ff; }
+  .chart { display:block; width:264px; height:78px; }
+  /* ---------- controls, bottom-centre ---------- */
+  #controls { position:fixed; z-index:10; left:50%; bottom:14px; transform:translateX(-50%);
+    display:flex; gap:7px; }
+  #controls button { font:inherit; font-size:11px; letter-spacing:.06em; cursor:pointer;
+    color:#cfeaff; background:rgba(5,26,48,.75); border:1px solid rgba(96,190,255,.4);
+    border-radius:999px; padding:8px 14px; backdrop-filter:blur(8px); transition:all .18s; }
+  #controls button:hover { border-color:#6fd3ff; color:#fff; }
+  #controls button.on { background:#0e5f9e; border-color:#6fd3ff; color:#fff; }
+  /* ---------- loading spinner (no text) ---------- */
+  #loading { position:fixed; inset:0; z-index:30; display:flex; align-items:center; justify-content:center;
+    background:#0a2e52; transition:opacity .6s; }
+  #loading.done { opacity:0; pointer-events:none; }
+  #loading .spin { width:52px; height:52px; border-radius:50%;
+    border:4px solid rgba(111,211,255,.25); border-top-color:#6fd3ff; animation:sp 0.9s linear infinite; }
+  @keyframes sp { to { transform:rotate(360deg); } }
+  @media (max-width:760px) {
+    #telemetry { min-width:0; padding:8px 10px; } #telemetry .row { font-size:11px; }
+    #minimap { width:150px; height:150px; }
+    #charts { display:none; }
+  }
 </style>
 </head>
 <body>
-<div id="app"></div>
-<div id="loading">⚓ Đang tải mô hình tàu…</div>
+<canvas id="scene"></canvas>
 
-<div class="panel">
-  <div class="kick">★ Mô hình Blender 3D ★</div>
-  <h1>HAPPY <b>HUNTER</b></h1>
-  <p>Tàu kéo <b>bản xanh HAIPHONG</b> dựng chi tiết bằng <b>Blender</b> (8 lốp chống va mỗi mạn, gờ chéo, sọc trắng mép boong, xuồng đỏ, ống Kort + chân vịt ở đuôi), đặt trên mặt <b>biển xanh dương trong lành</b>.</p>
-  <p class="sub">Kéo chuột để xoay • Lăn chuột để zoom • Bấm các nút dưới để xem từng góc</p>
+<div class="hud" id="telemetry">
+  <div class="hd"><span>NAV · TELEMETRY</span><span class="live">● LIVE</span></div>
+  <div class="row"><span class="k">LAT</span><span class="v" id="tLat">--</span></div>
+  <div class="row"><span class="k">LON</span><span class="v" id="tLon">--</span></div>
+  <div class="row"><span class="k">HDG</span><span class="v" id="tHdg">--</span></div>
+  <div class="row"><span class="k">COG</span><span class="v" id="tCog">--</span></div>
+  <div class="row"><span class="k">SOG</span><span class="v" id="tSog">--</span></div>
+  <div class="row"><span class="k">WIND</span><span class="v" id="tWind">--</span></div>
+  <div class="row"><span class="k">DEPTH</span><span class="v" id="tDepth">--</span></div>
+  <div class="row"><span class="k">RNG·WPT</span><span class="v" id="tRng">--</span></div>
 </div>
 
-<div class="bar">
-  <button data-v="toan" class="on">🌏 Toàn cảnh</button>
-  <button data-v="mui">⚓ Cận cảnh mũi</button>
-  <button data-v="duoi">🌀 Đuôi — chân vịt</button>
-  <button data-v="boong">🛠 Boong làm việc</button>
-  <button id="btnSpin" class="on">🔄 Tự xoay</button>
+<div class="hud" id="minimapBox">
+  <div class="hd"><span>TRACK</span><span>MINIMAP</span></div>
+  <canvas id="minimap" width="448" height="448"></canvas>
 </div>
-<div class="hint">Mô hình Blender xuất GLB • Hiển thị bằng Three.js</div>
+
+<div class="hud" id="charts">
+  <div class="hd"><span>SOG</span><b id="cSogV">-- kn</b></div>
+  <canvas class="chart" id="cSog" width="528" height="156"></canvas>
+  <div class="hd"><span>HDG</span><b id="cHdgV">-- °</b></div>
+  <canvas class="chart" id="cHdg" width="528" height="156"></canvas>
+</div>
+
+<div id="controls">
+  <button data-view="chase" class="on">CAM · ĐUÔI</button>
+  <button data-view="bow">CAM · MŨI</button>
+  <button data-view="top">CAM · TRÊN</button>
+  <button data-view="orbit">CAM · TOÀN CẢNH</button>
+  <button id="btnSail" class="on">⏸ DỪNG CHẠY</button>
+</div>
+
+<div id="loading"><div class="spin"></div></div>
 
 <script type="importmap">
-{"imports":{"three":"./three.module.js","three/addons/":"./addons/"}}
+{ "imports": {
+  "three": "./three.module.js",
+  "three/addons/": "./addons/"
+} }
 </script>
 <script type="module">
-import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-const app = document.getElementById("app");
-const renderer = new THREE.WebGLRenderer({ antialias:true });
+/* ================= renderer / scene ================= */
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.1;
-app.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0xa8d2ee, 240, 560);
-
-function skyTexture(stops){
-  const c = document.createElement("canvas"); c.width = 4; c.height = 512;
-  const g = c.getContext("2d");
-  const gr = g.createLinearGradient(0,0,0,512);
-  for (const [o,col] of stops) gr.addColorStop(o,col);
-  g.fillStyle = gr; g.fillRect(0,0,4,512);
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
-}
-const sky = new THREE.Mesh(new THREE.SphereGeometry(800, 24, 16),
-  new THREE.MeshBasicMaterial({ map: skyTexture([[0,"#2b78c8"],[0.55,"#7cb8e8"],[0.78,"#d3ecfa"],[1,"#eef8fd"]]), side: THREE.BackSide, fog:false }));
-scene.add(sky);
-
+scene.fog = new THREE.Fog(0x9fd2f2, 260, 620);
 const camera = new THREE.PerspectiveCamera(46, innerWidth/innerHeight, 0.1, 2000);
-camera.position.set(41, 15, 52);
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 3, 0);
-controls.enableDamping = true; controls.dampingFactor = 0.06;
-controls.maxPolarAngle = Math.PI * 0.62; controls.minDistance = 12; controls.maxDistance = 260;
-controls.autoRotate = true; controls.autoRotateSpeed = 0.7;
+camera.position.set(120, 26, 60);
 
-/* image-based lighting: gives the web render soft, Blender-like ambience */
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 scene.environmentIntensity = 0.5;
 scene.add(new THREE.HemisphereLight(0xd8ecff, 0x1c4d75, 0.55));
 const sun = new THREE.DirectionalLight(0xfff2dd, 2.4);
-sun.position.set(55, 70, 35); sun.castShadow = true;
+sun.position.set(90, 130, 50);
+sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left = -60; sun.shadow.camera.right = 60;
-sun.shadow.camera.top = 60; sun.shadow.camera.bottom = -60;
-sun.shadow.bias = -0.0004;
-scene.add(sun);
-const fill = new THREE.DirectionalLight(0xbfe0ff, 0.5); fill.position.set(-40, 25, -50); scene.add(fill);
+sun.shadow.camera.left = -160; sun.shadow.camera.right = 160;
+sun.shadow.camera.top = 160; sun.shadow.camera.bottom = -160;
+scene.add(sun); scene.add(sun.target);
 
-/* fresh blue sea */
-const oceanGeo = new THREE.PlaneGeometry(700, 700, 88, 88);
-oceanGeo.rotateX(-Math.PI/2);
-const ocean = new THREE.Mesh(oceanGeo, new THREE.MeshStandardMaterial({
-  color:0x1773c4, roughness:0.5, metalness:0.0, transparent:true, opacity:0.94 }));
+/* sky dome */
+{
+  const c = document.createElement('canvas'); c.width = 4; c.height = 256;
+  const g = c.getContext('2d'), gr = g.createLinearGradient(0,0,0,256);
+  gr.addColorStop(0,'#5fa8dd'); gr.addColorStop(0.55,'#9fd2f2'); gr.addColorStop(0.78,'#d8f0fc'); gr.addColorStop(1,'#eaf7ff');
+  g.fillStyle = gr; g.fillRect(0,0,4,256);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(880, 24, 16),
+    new THREE.MeshBasicMaterial({ map:tex, side:THREE.BackSide, fog:false }));
+  scene.add(sky);
+}
+
+/* sea — clear blue, animated vertices */
+const ocean = new THREE.Mesh(
+  new THREE.PlaneGeometry(760, 760, 96, 96),
+  new THREE.MeshStandardMaterial({ color:0x1773c4, roughness:0.5, metalness:0.0, transparent:true, opacity:0.94 }));
 ocean.material.envMapIntensity = 0.55;
-ocean.receiveShadow = true;
+ocean.rotation.x = -Math.PI/2; ocean.receiveShadow = true;
 scene.add(ocean);
-const oPos = oceanGeo.attributes.position;
-const oBase = oPos.array.slice();
+const seaPos = ocean.geometry.attributes.position;
+const seaBase = seaPos.array.slice();
 
-/* the Blender ship */
-const ship = new THREE.Group(); scene.add(ship);
+/* ================= route ================= */
+const WPT = [
+  [ 95, -45], [ 45, -88], [-45, -84], [-98, -30],
+  [-84,  42], [-15,  88], [ 58,  74], [ 98,  22]
+];
+const curve = new THREE.CatmullRomCurve3(
+  WPT.map(p => new THREE.Vector3(p[0], 0, p[1])), true, 'catmullrom', 0.6);
+const routePts = curve.getPoints(360);
+
+/* planned route — faint dashed line on the water */
+{
+  const g = new THREE.BufferGeometry().setFromPoints(routePts.map(p => new THREE.Vector3(p.x, 0.32, p.z)));
+  const route = new THREE.LineLoop(g, new THREE.LineDashedMaterial({
+    color:0xbfe6ff, dashSize:3.2, gapSize:2.4, transparent:true, opacity:0.5 }));
+  route.computeLineDistances();
+  scene.add(route);
+}
+
+/* sailed track — bright trail that grows behind the ship */
+const TRAIL_MAX = 900;
+const trailPos = new Float32Array(TRAIL_MAX * 3);
+const trailGeo = new THREE.BufferGeometry();
+trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+trailGeo.setDrawRange(0, 0);
+const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({
+  color:0x53f2ff, transparent:true, opacity:0.95 }));
+trail.frustumCulled = false;
+scene.add(trail);
+const trailPts = [];            // Vector3 history, for minimap too
+
+/* ================= ship ================= */
+const ship = new THREE.Group();
+scene.add(ship);
 let shipReady = false;
-new GLTFLoader().load("happy-hunter-blue.glb", (gltf) => {
+new GLTFLoader().load('happy-hunter-blue.glb', (gltf) => {
   const model = gltf.scene;
   model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; if (o.material) o.material.envMapIntensity = 0.7; } });
   ship.add(model);
   shipReady = true; window.__shipReady = true;
-  const ld = document.getElementById("loading");
-  ld.style.opacity = "0"; setTimeout(() => ld.remove(), 700);
-}, undefined, (err) => {
-  document.getElementById("loading").textContent = "Không tải được mô hình: " + err.message;
-  console.error(err);
-});
+  document.getElementById('loading').classList.add('done');
+}, undefined, (e) => console.error('GLB load error', e));
 
-/* camera flights */
-const VIEWS = {
-  toan:  [[41, 15, 52], [0, 3, 0]],
-  mui:   [[38, 6, 24], [16, 4.5, 0]],
-  duoi:  [[-46, 9, 30], [-14, 2.5, 0]],
-  boong: [[-16, 24, 30], [-9, 3.5, 0]],
-};
-let flight = null;
-function flyTo(name){
-  const [p, t] = VIEWS[name];
-  flight = { t: 0, dur: 1.7,
-    p0: camera.position.clone(), p1: new THREE.Vector3(...p),
-    c0: controls.target.clone(), c1: new THREE.Vector3(...t) };
-  const mid = flight.p0.clone().add(flight.p1).multiplyScalar(0.5);
-  mid.y = Math.max(flight.p0.y, flight.p1.y) + mid.distanceTo(flight.p0) * 0.16 + 3;
-  flight.pm = mid;
+/* ================= navigation simulation ================= */
+const LAT0 = 20.8650, LON0 = 106.6840, M_PER_UNIT = 15;
+let u = 0, sailing = true, headingDeg = 0, sogKn = 0;
+const LOOP_SEC = 170;
+const shipPos = new THREE.Vector3(), prevPos = new THREE.Vector3();
+let firstFrame = true;
+
+function geoOf(p) {
+  const lat = LAT0 + (-p.z * M_PER_UNIT) / 111320;
+  const lon = LON0 + ( p.x * M_PER_UNIT) / (111320 * Math.cos(LAT0 * Math.PI/180));
+  return [lat, lon];
 }
-document.querySelectorAll("[data-v]").forEach(b => b.addEventListener("click", () => {
-  document.querySelectorAll("[data-v]").forEach(x => x.classList.remove("on"));
-  b.classList.add("on"); flyTo(b.dataset.v);
-}));
-const btnSpin = document.getElementById("btnSpin");
-btnSpin.addEventListener("click", () => {
-  controls.autoRotate = !controls.autoRotate;
-  btnSpin.classList.toggle("on", controls.autoRotate);
-});
-controls.addEventListener("start", () => { flight = null; });
+function fmtLat(v) { return Math.abs(v).toFixed(5) + '° ' + (v >= 0 ? 'N' : 'S'); }
+function fmtLon(v) { return Math.abs(v).toFixed(5) + '° ' + (v >= 0 ? 'E' : 'W'); }
 
+function nearestWptDist(p) {
+  let best = 1e9, bi = 0;
+  WPT.forEach((w, i) => { const d = Math.hypot(p.x - w[0], p.z - w[1]); if (d < best) { best = d; bi = i; } });
+  return [best * M_PER_UNIT, bi + 1];
+}
+
+/* simulated sensors */
+const t0 = performance.now();
+function sensors(t) {
+  const turn = Math.abs(Math.sin(u * Math.PI * 4));
+  const sog = 8.4 - turn * 1.6 + Math.sin(t * 0.35) * 0.35 + Math.sin(t * 1.7) * 0.12;
+  const wind = 13.5 + Math.sin(t * 0.21 + 1.3) * 3.2 + Math.sin(t * 0.9) * 0.8;
+  const windDir = (205 + Math.sin(t * 0.05) * 25 + 360) % 360;
+  const depth = 21 + Math.sin(shipPos.x * 0.021) * 4.5 + Math.cos(shipPos.z * 0.017) * 3.5;
+  return { sog, wind, windDir, depth };
+}
+
+/* ================= camera follow ================= */
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.06;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.minDistance = 12; controls.maxDistance = 260;
+
+let camMode = 'chase';
+function camOffset() {
+  const h = headingDeg * Math.PI / 180;
+  const fwd = new THREE.Vector3(Math.sin(h), 0, Math.cos(h)); // ship heading in world XZ (bow +X model mapped)
+  if (camMode === 'bow')   return fwd.clone().multiplyScalar(54).add(new THREE.Vector3(0, 12, 0));
+  if (camMode === 'top')   return new THREE.Vector3(0, 95, 0.01);
+  if (camMode === 'orbit') return null;
+  return fwd.clone().multiplyScalar(-66).add(new THREE.Vector3(0, 20, 0)); // chase
+}
+document.querySelectorAll('#controls [data-view]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#controls [data-view]').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); camMode = b.dataset.view;
+  const off = camOffset();
+  if (off) camera.position.copy(shipPos).add(off);
+}));
+const btnSail = document.getElementById('btnSail');
+btnSail.addEventListener('click', () => {
+  sailing = !sailing;
+  btnSail.textContent = sailing ? '⏸ DỪNG CHẠY' : '▶ CHẠY TIẾP';
+  btnSail.classList.toggle('on', sailing);
+});
+
+/* ================= minimap ================= */
+const mm = document.getElementById('minimap').getContext('2d');
+const MM = 448, WORLD = 150;
+const mmX = x => (x + WORLD) / (2 * WORLD) * MM;
+const mmY = z => (z + WORLD) / (2 * WORLD) * MM;
+function drawMinimap() {
+  mm.clearRect(0, 0, MM, MM);
+  mm.fillStyle = 'rgba(4,24,44,0.92)'; mm.fillRect(0, 0, MM, MM);
+  mm.strokeStyle = 'rgba(96,190,255,0.16)'; mm.lineWidth = 1;
+  for (let i = 1; i < 6; i++) {
+    mm.beginPath(); mm.moveTo(MM * i / 6, 0); mm.lineTo(MM * i / 6, MM); mm.stroke();
+    mm.beginPath(); mm.moveTo(0, MM * i / 6); mm.lineTo(MM, MM * i / 6); mm.stroke();
+  }
+  mm.strokeStyle = 'rgba(96,190,255,0.22)';
+  [50, 100, 140].forEach(r => { mm.beginPath(); mm.arc(mmX(0), mmY(0), r / (2 * WORLD) * MM, 0, Math.PI * 2); mm.stroke(); });
+  /* planned route */
+  mm.strokeStyle = 'rgba(160,215,255,0.45)'; mm.lineWidth = 1.6; mm.setLineDash([5, 4]);
+  mm.beginPath();
+  routePts.forEach((p, i) => i ? mm.lineTo(mmX(p.x), mmY(p.z)) : mm.moveTo(mmX(p.x), mmY(p.z)));
+  mm.closePath(); mm.stroke(); mm.setLineDash([]);
+  /* waypoints */
+  mm.fillStyle = '#eaf7ff';
+  WPT.forEach(w => { mm.beginPath(); mm.arc(mmX(w[0]), mmY(w[1]), 3.2, 0, Math.PI * 2); mm.fill(); });
+  /* sailed track */
+  if (trailPts.length > 1) {
+    mm.strokeStyle = '#53f2ff'; mm.lineWidth = 2.4; mm.beginPath();
+    trailPts.forEach((p, i) => i ? mm.lineTo(mmX(p.x), mmY(p.z)) : mm.moveTo(mmX(p.x), mmY(p.z)));
+    mm.stroke();
+  }
+  /* ship marker: heading in canvas coords (x east, y south) */
+  const h = headingDeg * Math.PI / 180;
+  const sx = mmX(shipPos.x), sy = mmY(shipPos.z);
+  const dx = Math.sin(h), dy = -Math.cos(h);
+  mm.save(); mm.translate(sx, sy); mm.rotate(Math.atan2(dx, -dy));
+  mm.fillStyle = '#ffd94d';
+  mm.beginPath(); mm.moveTo(0, -9); mm.lineTo(5.5, 7); mm.lineTo(-5.5, 7); mm.closePath(); mm.fill();
+  mm.restore();
+  mm.strokeStyle = 'rgba(255,217,77,0.5)'; mm.lineWidth = 1.4;
+  mm.beginPath(); mm.arc(sx, sy, 13, 0, Math.PI * 2); mm.stroke();
+  /* north arrow + scale */
+  mm.fillStyle = '#6fd3ff'; mm.font = 'bold 17px monospace'; mm.fillText('N', MM - 26, 24);
+  mm.beginPath(); mm.moveTo(MM - 21, 30); mm.lineTo(MM - 16, 42); mm.lineTo(MM - 26, 42); mm.closePath(); mm.fill();
+  mm.fillStyle = 'rgba(207,234,255,0.75)'; mm.font = '12px monospace';
+  mm.fillText('0.5 NM', 12, MM - 12);
+  mm.strokeStyle = 'rgba(207,234,255,0.6)';
+  const nmPx = (926 / M_PER_UNIT) / (2 * WORLD) * MM;
+  mm.beginPath(); mm.moveTo(12, MM - 20); mm.lineTo(12 + nmPx, MM - 20); mm.stroke();
+}
+
+/* ================= charts ================= */
+function makeChart(id) {
+  const ctx = document.getElementById(id).getContext('2d');
+  return { ctx, data: [], push(v) { this.data.push(v); if (this.data.length > 110) this.data.shift(); } };
+}
+const chSog = makeChart('cSog'), chHdg = makeChart('cHdg');
+function drawChart(ch, min, max, color, fmt) {
+  const { ctx, data } = ch, W = 528, H = 156;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(4,24,44,0.55)'; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(96,190,255,0.18)'; ctx.lineWidth = 1;
+  for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(0, H * i / 4); ctx.lineTo(W, H * i / 4); ctx.stroke(); }
+  for (let i = 1; i < 6; i++) { ctx.beginPath(); ctx.moveTo(W * i / 6, 0); ctx.lineTo(W * i / 6, H); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(127,168,201,0.9)'; ctx.font = '15px monospace';
+  ctx.fillText(fmt(max), 6, 17); ctx.fillText(fmt(min), 6, H - 6);
+  if (data.length < 2) return;
+  ctx.strokeStyle = color; ctx.lineWidth = 2.4; ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = i / 109 * W, y = H - (v - min) / (max - min) * (H - 14) - 7;
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  });
+  ctx.stroke();
+}
+
+/* ================= HUD update ================= */
+const el = id => document.getElementById(id);
+let lastHud = 0, lastTrail = 0, lastChart = 0;
+function updateHud(t) {
+  const s = sensors(t);
+  const [lat, lon] = geoOf(shipPos);
+  const [rng, wpt] = nearestWptDist(shipPos);
+  el('tLat').textContent = fmtLat(lat);
+  el('tLon').textContent = fmtLon(lon);
+  el('tHdg').innerHTML = headingDeg.toFixed(1) + '<em>°</em>';
+  el('tCog').innerHTML = headingDeg.toFixed(1) + '<em>°</em>';
+  el('tSog').innerHTML = s.sog.toFixed(1) + '<em>kn</em>';
+  el('tWind').innerHTML = s.wind.toFixed(0) + '<em>kn</em> ' + s.windDir.toFixed(0) + '<em>°</em>';
+  el('tDepth').innerHTML = s.depth.toFixed(1) + '<em>m</em>';
+  el('tRng').innerHTML = (rng / 1852).toFixed(2) + '<em>NM → WPT' + wpt + '</em>';
+  el('cSogV').textContent = s.sog.toFixed(1) + ' kn';
+  el('cHdgV').textContent = headingDeg.toFixed(0) + ' °';
+  sogKn = s.sog;
+  window.__sog = s.sog; window.__hdg = headingDeg; window.__trail = trailPts.length;
+}
+
+/* ================= main loop ================= */
 const clock = new THREE.Clock();
-function animate(){
+function animate() {
   requestAnimationFrame(animate);
-  const t = clock.getElapsedTime();
-  for (let i = 0; i < oPos.count; i++){
-    const x = oBase[i*3], z = oBase[i*3+2];
-    oPos.setY(i, Math.sin(x*0.11 + t*0.9)*0.32 + Math.cos(z*0.13 + t*0.7)*0.3);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = (performance.now() - t0) / 1000;
+
+  /* sea waves */
+  const pos = ocean.geometry.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = seaBase[i * 3], y = seaBase[i * 3 + 1];
+    pos.array[i * 3 + 2] = Math.sin(x * 0.055 + t * 0.9) * 0.55 + Math.cos(y * 0.045 + t * 0.7) * 0.5;
   }
-  oPos.needsUpdate = true; oceanGeo.computeVertexNormals();
-  if (shipReady){
-    ship.position.y = Math.sin(t*0.55)*0.13;
-    ship.rotation.z = Math.sin(t*0.42)*0.006;
-    ship.rotation.x = Math.sin(t*0.31)*0.004;
-  }
-  if (flight){
-    flight.t += 1/60 / flight.dur;
-    const k = flight.t >= 1 ? 1 : (1 - Math.pow(1 - flight.t, 3));
-    const a = flight.p0.clone().lerp(flight.pm, k), b = flight.pm.clone().lerp(flight.p1, k);
-    camera.position.copy(a.lerp(b, k));
-    controls.target.copy(flight.c0.clone().lerp(flight.c1, k));
-    if (flight.t >= 1) flight = null;
+  pos.needsUpdate = true;
+  ocean.geometry.computeVertexNormals();
+
+  if (shipReady) {
+    prevPos.copy(shipPos);
+    if (sailing) u = (u + dt / LOOP_SEC) % 1;
+    const p = curve.getPointAt(u);
+    const tan = curve.getTangentAt(u);
+    shipPos.set(p.x, 0, p.z);
+    headingDeg = (Math.atan2(tan.x, tan.z) * 180 / Math.PI + 360) % 360;
+    /* model bow is +X: yaw so +X follows the tangent */
+    const targetYaw = Math.atan2(-tan.z, tan.x);
+    ship.position.set(shipPos.x, Math.sin(t * 0.9) * 0.14 + 0.12, shipPos.z);
+    ship.rotation.y = targetYaw;
+    ship.rotation.z = Math.sin(t * 0.7) * 0.006 + (sailing ? Math.sin(u * Math.PI * 8) * 0.008 : 0);
+    ship.rotation.x = Math.cos(t * 0.55) * 0.004;
+
+    /* trail recording */
+    if (sailing && t - lastTrail > 0.35) {
+      lastTrail = t;
+      trailPts.push(new THREE.Vector3(shipPos.x, 0.32, shipPos.z));
+      if (trailPts.length > TRAIL_MAX) trailPts.shift();
+      trailPts.forEach((q, i) => { trailPos[i * 3] = q.x; trailPos[i * 3 + 1] = q.y; trailPos[i * 3 + 2] = q.z; });
+      trailGeo.attributes.position.needsUpdate = true;
+      trailGeo.setDrawRange(0, trailPts.length);
+    }
+
+    /* camera follow */
+    if (!firstFrame) {
+      const delta = shipPos.clone().sub(prevPos);
+      camera.position.add(delta);
+      if (camMode !== 'orbit') {
+        const off = camOffset();
+        const want = shipPos.clone().add(off);
+        camera.position.lerp(want, camMode === 'top' ? 0.05 : 0.035);
+      }
+    } else {
+      const off = camOffset() || new THREE.Vector3(-52, 17, 0);
+      camera.position.copy(shipPos).add(off);
+      firstFrame = false;
+    }
+    controls.target.set(shipPos.x, shipPos.y + 3.2, shipPos.z);
+    sun.position.set(shipPos.x + 90, 130, shipPos.z + 50);
+    sun.target.position.copy(shipPos);
+
+    if (t - lastHud > 0.15) { lastHud = t; updateHud(t); drawMinimap(); }
+    if (t - lastChart > 0.45) {
+      lastChart = t;
+      chSog.push(sogKn); chHdg.push(headingDeg);
+      drawChart(chSog, 4, 12, '#53f2ff', v => v.toFixed(0));
+      drawChart(chHdg, 0, 360, '#ffd94d', v => v.toFixed(0));
+    }
   }
   controls.update();
   renderer.render(scene, camera);
 }
 animate();
 
-addEventListener("resize", () => {
-  camera.aspect = innerWidth/innerHeight;
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
 });
