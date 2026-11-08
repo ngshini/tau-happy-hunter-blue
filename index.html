@@ -283,33 +283,74 @@ new GLTFLoader().load('happy-hunter-blue.glb', (gltf) => {
   document.getElementById('loading').classList.add('done');
 }, undefined, (e) => console.error('GLB load error', e));
 
-/* wake: centre foam strip + two V arms, textures fade along length and edges */
-function wakeTexture() {
-  const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+/* foam texture: thousands of tiny bubbles, densest at the stern, fading out */
+function foamTexture() {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128;
   const g = c.getContext('2d');
-  const img = g.createImageData(256, 64);
-  for (let y = 0; y < 64; y++) for (let x = 0; x < 256; x++) {
-    const along = 1 - x / 255;                       // opaque at stern (x=0), fades out
-    const edge = Math.sin(Math.PI * y / 63);        // soft side edges
-    const a = Math.pow(along, 1.5) * Math.pow(edge, 1.4) * 235;
-    const i = (y * 256 + x) * 4;
-    img.data[i] = 235; img.data[i + 1] = 250; img.data[i + 2] = 255; img.data[i + 3] = a;
+  for (let i = 0; i < 1500; i++) {
+    const x = Math.random() * 256, y = Math.random() * 128;
+    const r = 0.8 + Math.random() * 5.2, a = 0.05 + Math.random() * 0.30;
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, 'rgba(255,255,255,' + a + ')');
+    gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr;
+    g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
   }
-  g.putImageData(img, 0, 0);
+  g.fillStyle = 'rgba(255,255,255,0.55)';
+  for (let i = 0; i < 600; i++) g.fillRect(Math.random() * 256, Math.random() * 128, 1.4, 1.4);
+  g.globalCompositeOperation = 'destination-in';
+  const lg = g.createLinearGradient(0, 0, 256, 0);
+  lg.addColorStop(0, 'rgba(0,0,0,1)'); lg.addColorStop(0.7, 'rgba(0,0,0,0.6)'); lg.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = lg; g.fillRect(0, 0, 256, 128);
+  const vg = g.createLinearGradient(0, 0, 0, 128);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(0.28, 'rgba(0,0,0,1)');
+  vg.addColorStop(0.72, 'rgba(0,0,0,1)'); vg.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = vg; g.fillRect(0, 0, 256, 128);
+  g.globalCompositeOperation = 'source-over';
   const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 1);
   return tex;
 }
-const wakeTex = wakeTexture();
-function wakePlane(len, wid) {
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(len, wid),
-    new THREE.MeshBasicMaterial({ map:wakeTex, transparent:true, opacity:0.85, depthWrite:false }));
+const foamTex = foamTexture();
+const foamMats = [];
+function foamMat(opacity) {
+  const m = new THREE.MeshBasicMaterial({ map:foamTex, transparent:true, opacity, depthWrite:false });
+  m.userData.base = opacity;
+  foamMats.push(m);
+  return m;
+}
+function wakePlane(len, wid, op) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(len, wid), foamMat(op));
   m.rotation.x = -Math.PI / 2;
   m.rotation.z = Math.PI; // texture x=0 (bright end) at the stern side
   return m;
 }
-const wakeC = wakePlane(64, 10); wakeC.position.set(-26 - 32, 0.3, 0); ship.add(wakeC);
-const wakeL = wakePlane(52, 5.5); wakeL.position.set(-26 - 21, 0.3, 8.5); wakeL.rotation.z = Math.PI - 0.30; ship.add(wakeL);
-const wakeR = wakePlane(52, 5.5); wakeR.position.set(-26 - 21, 0.3, -8.5); wakeR.rotation.z = Math.PI + 0.30; ship.add(wakeR);
+const wakeC = wakePlane(64, 10, 0.95); wakeC.position.set(-26 - 32, 0.3, 0); ship.add(wakeC);
+const wakeL = wakePlane(52, 5.5, 0.8); wakeL.position.set(-26 - 21, 0.3, 8.5); wakeL.rotation.z = Math.PI - 0.30; ship.add(wakeL);
+const wakeR = wakePlane(52, 5.5, 0.8); wakeR.position.set(-26 - 21, 0.3, -8.5); wakeR.rotation.z = Math.PI + 0.30; ship.add(wakeR);
+
+/* bow foam wedges + foam strips along both hull sides at the waterline */
+const bowFoamL = wakePlane(15, 3.4, 0.85); bowFoamL.position.set(21.5, 0.3, 3.6); bowFoamL.rotation.z = Math.PI - 0.5; ship.add(bowFoamL);
+const bowFoamR = wakePlane(15, 3.4, 0.85); bowFoamR.position.set(21.5, 0.3, -3.6); bowFoamR.rotation.z = Math.PI + 0.5; ship.add(bowFoamR);
+const sideFoamL = wakePlane(38, 2.6, 0.55); sideFoamL.position.set(1, 0.28, 6.1); sideFoamL.rotation.z = Math.PI; ship.add(sideFoamL);
+const sideFoamR = wakePlane(38, 2.6, 0.55); sideFoamR.position.set(1, 0.28, -6.1); sideFoamR.rotation.z = Math.PI; ship.add(sideFoamR);
+
+/* stern wash: foam particles churned up by the propellers, drifting astern */
+const WASH_N = 240;
+const washPos = new Float32Array(WASH_N * 3);
+const washVel = [], washAge = new Float32Array(WASH_N);
+for (let i = 0; i < WASH_N; i++) { washVel.push(new THREE.Vector3()); washAge[i] = Math.random() * 3; washPos[i * 3 + 1] = -10; }
+const washGeo = new THREE.BufferGeometry();
+washGeo.setAttribute('position', new THREE.BufferAttribute(washPos, 3));
+let wash = null;
+function respawnWash(i) {
+  washPos[i * 3] = -26.5 - Math.random() * 2;
+  washPos[i * 3 + 1] = 0.34;
+  washPos[i * 3 + 2] = (Math.random() * 2 - 1) * 2.4;
+  washVel[i].set(-(4.5 + Math.random() * 6), 0, (Math.random() * 2 - 1) * 1.6);
+  washAge[i] = 0;
+}
 
 /* bow spray particles (ship-local space) */
 const SPRAY_N = 150;
@@ -331,6 +372,10 @@ const spray = new THREE.Points(sprayGeo, new THREE.PointsMaterial({
   size:2.1, map:sprayTex, transparent:true, opacity:0.75, depthWrite:false, color:0xf4fbff }));
 spray.frustumCulled = false;
 ship.add(spray);
+wash = new THREE.Points(washGeo, new THREE.PointsMaterial({
+  size:3.4, map:sprayTex, transparent:true, opacity:0.85, depthWrite:false, color:0xffffff }));
+wash.frustumCulled = false;
+ship.add(wash);
 function respawnSpray(i) {
   const s = Math.random() < 0.5 ? -1 : 1;
   sprayPos[i * 3] = 23.5 + Math.random() * 2.5;
@@ -341,7 +386,7 @@ function respawnSpray(i) {
 
 /* ============ navigation simulation ============ */
 const LAT0 = 20.8650, LON0 = 106.6840, M_PER_UNIT = 15;
-let u = 0, sailing = true, headingDeg = 0, sogKn = 0, windNow = 13;
+let u = 0, sailing = true, headingDeg = 0, sogKn = 0, windNow = 13, foamFade = 0;
 const LOOP_SEC = 170;
 const shipPos = new THREE.Vector3(), prevPos = new THREE.Vector3();
 let firstFrame = true;
@@ -601,10 +646,22 @@ function animate() {
     tilt.rotation.z = Math.atan2(hB - hS, 40) * 0.9;      // pitch (bow up/down with the swell)
     tilt.rotation.x = Math.atan2(hP - hT, 12) * 0.7;      // roll
 
-    /* wake + spray only while under way */
-    const wakeOn = sailing ? 0.85 : 0.0;
-    wakeC.material.opacity += (wakeOn - wakeC.material.opacity) * 0.04;
-    wakeL.material.opacity = wakeR.material.opacity = wakeC.material.opacity;
+    /* foam + spray only while under way; foam texture churns/scrolls */
+    foamFade += ((sailing ? 1 : 0) - foamFade) * 0.04;
+    for (const m of foamMats) m.opacity = m.userData.base * foamFade;
+    foamTex.offset.x -= dt * 0.16;
+    foamTex.offset.y = Math.sin(t * 0.7) * 0.012;
+    if (sailing) {
+      for (let i = 0; i < WASH_N; i++) {
+        washAge[i] += dt;
+        if (washAge[i] > 3 || washPos[i * 3] < -105) { respawnWash(i); continue; }
+        washPos[i * 3] += washVel[i].x * dt;
+        washPos[i * 3 + 2] += washVel[i].z * dt;
+        washPos[i * 3 + 1] = 0.34 + Math.sin(t * 2 + i) * 0.05;
+      }
+      washGeo.attributes.position.needsUpdate = true;
+    }
+    if (wash) wash.material.opacity = 0.85 * foamFade;
     if (sailing) {
       for (let i = 0; i < SPRAY_N; i++) {
         if (sprayPos[i * 3 + 1] < 0) { if (Math.random() < 0.25) respawnSpray(i); continue; }
