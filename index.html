@@ -112,29 +112,13 @@
 </div>
 
 <div class="hud" id="console">
-  <div class="cell" style="--ac:#53f2ff">
-    <div class="hd"><span class="tt"><span class="ic" style="color:#53f2ff;background:#53f2ff22;border-color:#53f2ff55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4.5 19a9 9 0 1 1 15 0"/><path d="M12 14l4.2-4.2"/><circle cx="12" cy="14" r="1.4" fill="currentColor"/></svg></span>SOG <i class="dot" style="background:#53f2ff"></i> STW <i class="dot" style="background:#fff"></i> · kn</span><b id="cSogV">--</b></div>
-    <canvas class="chart" id="cSog" width="528" height="132"></canvas>
-  </div>
   <div class="cell" style="--ac:#ffd94d">
     <div class="hd"><span class="tt"><span class="ic" style="color:#ffd94d;background:#ffd94d22;border-color:#ffd94d55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8z" fill="currentColor" stroke="none"/></svg></span>HDG <i class="dot" style="background:#ffd94d"></i> COG <i class="dot" style="background:#3dff8e"></i> · °</span><b id="cHdgV">--</b></div>
-    <canvas class="chart" id="cHdg" width="528" height="132"></canvas>
+    <canvas class="chart" id="cHdg" width="840" height="132"></canvas>
   </div>
   <div class="cell" style="--ac:#e08fff">
     <div class="hd"><span class="tt"><span class="ic" style="color:#e08fff;background:#e08fff22;border-color:#e08fff55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12a8.5 8.5 0 1 1-2.5-6"/><path d="M21 3.5V8h-4.5"/></svg></span>ROT · °/min</span><b id="cRotV">--</b></div>
-    <canvas class="chart" id="cRot" width="528" height="132"></canvas>
-  </div>
-  <div class="cell" style="--ac:#6fb7ff">
-    <div class="hd"><span class="tt"><span class="ic" style="color:#6fb7ff;background:#6fb7ff22;border-color:#6fb7ff55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8c2.7 0 2.7 2.2 5.4 2.2S10.1 8 12.8 8s2.7 2.2 5.4 2.2S20.9 8 22 8"/><path d="M12 13v7"/><path d="M8.8 17.2L12 20.4l3.2-3.2"/></svg></span>DEPTH · m</span><b id="cDepthV">--</b></div>
-    <canvas class="chart" id="cDepth" width="528" height="132"></canvas>
-  </div>
-  <div class="cell" style="--ac:#ffb04d">
-    <div class="hd"><span class="tt"><span class="ic" style="color:#ffb04d;background:#ffb04d22;border-color:#ffb04d55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="6.5"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/></svg></span>XTE · m</span><b id="cXteV">--</b></div>
-    <canvas class="chart" id="cXte" width="528" height="132"></canvas>
-  </div>
-  <div class="cell" style="--ac:#3dff8e">
-    <div class="hd"><span class="tt"><span class="ic" style="color:#3dff8e;background:#3dff8e22;border-color:#3dff8e55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h9.5a2.8 2.8 0 1 0-2.8-2.8"/><path d="M2 12h14.5a2.8 2.8 0 1 1-2.8 2.8"/><path d="M3 16.5h6"/></svg></span>WIND · kn</span><b id="cWindV">--</b></div>
-    <canvas class="chart" id="cWind" width="528" height="132"></canvas>
+    <canvas class="chart" id="cRot" width="840" height="132"></canvas>
   </div>
   <div class="cell compassCell">
     <div class="hd"><span class="tt"><span class="ic" style="color:#6fd3ff;background:#6fd3ff22;border-color:#6fd3ff55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8z" fill="currentColor" stroke="none"/></svg></span>COMPASS</span></div>
@@ -1191,7 +1175,7 @@ try {
    at ~1 Hz to the same EMQX broker the lidar firmware already uses
    (the board posts to :8883/TLS; the page subscribes over WSS :8084).
    While the feed is fresh (< 6 s) the page mirrors the real model:
-   telemetry, compass, minimap, HDG/ROT/SOG charts and the 3D ship's
+   telemetry, compass, minimap, HDG/ROT charts and the 3D ship's
    heading + position all go real. When the feed stops, the built-in
    simulation quietly takes over again so the stand never goes blank. */
 const LIVE = { on: false, x: 0, y: 0, hdg: 0, rot: 0, cog: 0, sogKn: 0,
@@ -1449,14 +1433,10 @@ function makeChart(id, colors) {
 function pushChart(ch, vals) {
   ch.lines.forEach((L, i) => { L.data.push(vals[i]); if (L.data.length > 110) L.data.shift(); });
 }
-const chSpd = makeChart('cSog', ['#53f2ff', '#ffffff']);
 const chHdgCog = makeChart('cHdg', ['#ffd94d', '#3dff8e']);
 const chRot = makeChart('cRot', ['#e08fff']);
-const chDepth = makeChart('cDepth', ['#6fb7ff']);
-const chXte = makeChart('cXte', ['#ffb04d']);
-const chWind = makeChart('cWind', ['#3dff8e']);
 function drawChart(ch, min, max, opts = {}) {
-  const { ctx } = ch, W = 528, H = 132;
+  const { ctx } = ch, W = 840, H = 132;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = 'rgba(4,24,44,0.55)'; ctx.fillRect(0, 0, W, H);
   ctx.strokeStyle = 'rgba(96,190,255,0.18)'; ctx.lineWidth = 1;
@@ -1519,12 +1499,8 @@ function updateHud(t) {
     el('tLon').textContent = LIVE.y.toFixed(2) + ' m';
     el('tRng').innerHTML = Math.hypot(LIVE.x, LIVE.y).toFixed(2) + '<em>m · GỐC</em>';
   }
-  el('cSogV').textContent = s.sog.toFixed(1) + ' / ' + s.stw.toFixed(1);
   el('cHdgV').textContent = headingDeg.toFixed(0) + ' / ' + cogDeg.toFixed(0);
   el('cRotV').textContent = (rotNow >= 0 ? '+' : '') + rotNow.toFixed(0);
-  el('cDepthV').textContent = s.depth.toFixed(1);
-  el('cXteV').textContent = (xteNow >= 0 ? '+' : '') + xteNow.toFixed(0);
-  el('cWindV').textContent = s.wind.toFixed(0);
   /* ship balance: live heel read straight from the wave-driven tilt */
   const heelDeg = Math.abs(THREE.MathUtils.radToDeg(tilt.rotation.x));
   const hTxt = heelDeg.toFixed(1) + '°';
@@ -1706,18 +1682,10 @@ function animate() {
     if (t - lastHud > 0.15) { lastHud = t; updateHud(t); drawMinimap(); }
     if (t - lastChart > 0.45) {
       lastChart = t;
-      pushChart(chSpd, [sogKn, stwNow]);
       pushChart(chHdgCog, [headingDeg, cogDeg]);
       pushChart(chRot, [rotNow]);
-      pushChart(chDepth, [sensors(t).depth]);
-      pushChart(chXte, [xteNow]);
-      pushChart(chWind, [windNow]);
-      drawChart(chSpd, 4, 12);
       drawChart(chHdgCog, 0, 360);
       drawChart(chRot, -40, 40, { zero: true });
-      drawChart(chDepth, 10, 32, { fill: 'rgba(111,183,255,0.13)' });
-      drawChart(chXte, -60, 60, { zero: true });
-      drawChart(chWind, 4, 24, { fill: 'rgba(61,255,142,0.13)' });
     }
   }
   controls.update();
