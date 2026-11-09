@@ -50,9 +50,12 @@
     width:21px; height:21px; border-radius:6px; border:1px solid; flex:0 0 auto; }
   #console .ic svg { width:14px; height:14px; }
   .chart { display:block; width:100%; height:64px; }
-  #console .cell.balanceCell { flex:0 0 230px; padding:8px 6px 6px; }
-  #balCanvas { display:block; width:100%; height:92px; }
-  .balFt { font-size:9.5px; letter-spacing:-.01em; color:#9fc6d8; text-align:center; margin-top:3px; white-space:nowrap; }
+  #balanceBox { padding:10px 12px 9px; }
+  #balanceBox .hd { font-size:10px; letter-spacing:.18em; color:#6fd3ff; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; }
+  #balanceBox .ic { display:inline-flex; align-items:center; justify-content:center; width:21px; height:21px; border-radius:6px; border:1px solid #37e6ec55; background:#37e6ec22; color:#37e6ec; margin-right:6px; }
+  #balanceBox .ic svg { width:14px; height:14px; }
+  #balCanvas { display:block; width:224px; height:110px; }
+  .balFt { font-size:10.5px; color:#9fc6d8; text-align:center; margin-top:4px; white-space:nowrap; }
   .balFt b { color:#eaf7ff; font-size:11.5px; }
   #compass { display:block; width:118px; height:118px; margin:0 auto; }
   #vignette { position:fixed; inset:0; z-index:4; pointer-events:none;
@@ -68,6 +71,7 @@
     #logoPlate img { height:36px; }
     #telemetry { top:14px; min-width:0; padding:8px 10px; } #telemetry .row { font-size:11px; }
     #minimap { width:148px; height:148px; }
+    #balCanvas { width:148px; height:73px; }
     #console { display:none; }
     #btnMenu { bottom:14px; }
     #controls { bottom:64px; }
@@ -100,6 +104,11 @@
     <div class="hd"><span>TRACK</span><span>MINIMAP</span></div>
     <canvas id="minimap" width="448" height="448"></canvas>
   </div>
+  <div class="hud" id="balanceBox">
+    <div class="hd"><span><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 7l7-4 7 4"/><path d="M3 13l2-6 2 6a3.5 3.5 0 0 1-4 0z"/><path d="M17 13l2-6 2 6a3.5 3.5 0 0 1-4 0z"/><path d="M8 21h8"/></svg></span>SHIP BALANCE</span><span>WIREFRAME 3D</span></div>
+    <canvas id="balCanvas" width="448" height="220"></canvas>
+    <div class="balFt">Nghiêng mạn: <b id="balHeel">0.0°</b> · Trạng thái: <b id="balStatus" style="color:#3dff8e">Standard</b></div>
+  </div>
 </div>
 
 <div class="hud" id="console">
@@ -126,11 +135,6 @@
   <div class="cell" style="--ac:#3dff8e">
     <div class="hd"><span class="tt"><span class="ic" style="color:#3dff8e;background:#3dff8e22;border-color:#3dff8e55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h9.5a2.8 2.8 0 1 0-2.8-2.8"/><path d="M2 12h14.5a2.8 2.8 0 1 1-2.8 2.8"/><path d="M3 16.5h6"/></svg></span>WIND · kn</span><b id="cWindV">--</b></div>
     <canvas class="chart" id="cWind" width="528" height="132"></canvas>
-  </div>
-  <div class="cell balanceCell" style="--ac:#37e6ec">
-    <div class="hd"><span class="tt"><span class="ic" style="color:#37e6ec;background:#37e6ec22;border-color:#37e6ec55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 7l7-4 7 4"/><path d="M3 13l2-6 2 6a3.5 3.5 0 0 1-4 0z"/><path d="M17 13l2-6 2 6a3.5 3.5 0 0 1-4 0z"/><path d="M8 21h8"/></svg></span>SHIP BALANCE</span><span style="letter-spacing:.06em;color:#8fb8c9">WIREFRAME 3D</span></div>
-    <canvas id="balCanvas" width="460" height="184"></canvas>
-    <div class="balFt">Nghiêng mạn: <b id="balHeel">0.0°</b> · Trạng thái: <b id="balStatus" style="color:#3dff8e">Standard</b></div>
   </div>
   <div class="cell compassCell">
     <div class="hd"><span class="tt"><span class="ic" style="color:#6fd3ff;background:#6fd3ff22;border-color:#6fd3ff55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8z" fill="currentColor" stroke="none"/></svg></span>COMPASS</span></div>
@@ -1110,9 +1114,9 @@ let balHeelTxt = '', balStatusTxt = '';
 try {
   balRenderer = new THREE.WebGLRenderer({ canvas: document.getElementById('balCanvas'), antialias: true, alpha: true });
   balRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  balRenderer.setSize(230, 92, false);
+  balRenderer.setSize(224, 110, false);
   balScene = new THREE.Scene();
-  balCam = new THREE.PerspectiveCamera(36, 230 / 92, 0.1, 80);
+  balCam = new THREE.PerspectiveCamera(36, 224 / 110, 0.1, 80);
   balCam.position.set(5.4, 3.1, 6.1);
   balCam.lookAt(0, 0.55, 0);
   balLineMat = new THREE.LineBasicMaterial({ color: 0x3fe8ef, transparent: true, opacity: 0.95 });
