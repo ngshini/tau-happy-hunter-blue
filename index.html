@@ -65,16 +65,16 @@
      deleted in fcfea42 (title-lockup removal), leaving the view-settings
      button unstyled and buried under the canvas; offsets raised slightly
      (186->210, 238->262) to clear today's taller compact console */
-  #btnMenu { position:fixed; z-index:11; left:50%; bottom:210px; transform:translateX(-50%);
+  #btnMenu { position:absolute; z-index:21; left:14px; top:50%; transform:translateY(-50%);
     font:inherit; font-size:11.5px; letter-spacing:.1em; cursor:pointer; color:#eaf7ff;
     background:linear-gradient(160deg, rgba(7,34,60,.88), rgba(4,20,38,.85));
     border:1px solid rgba(111,211,255,.55); border-top:2px solid rgba(111,211,255,.7);
-    border-radius:999px; padding:10px 22px; backdrop-filter:blur(10px);
+    border-radius:999px; padding:8px 18px; backdrop-filter:blur(10px);
     box-shadow:0 10px 30px rgba(0,10,25,.5); transition:all .18s; }
   #btnMenu:hover { border-color:#6fd3ff; box-shadow:0 10px 34px rgba(20,120,200,.45); }
-  #controls { left:50%; margin-left:-176px; bottom:262px; width:352px; padding:14px 16px 12px;
+  #controls { left:14px; top:calc(var(--hdrH) + 10px); width:352px; padding:14px 16px 12px; z-index:21;
     animation:pop .18s ease-out; }
-  @keyframes pop { from { opacity:0; transform:translateY(8px) scale(.97); } to { opacity:1; transform:none; } }
+  @keyframes pop { from { opacity:0; transform:translateY(-6px) scale(.98); } to { opacity:1; transform:none; } }
   #controls .popHd { display:flex; justify-content:space-between; align-items:center;
     font-size:10.5px; letter-spacing:.22em; color:#6fd3ff;
     border-bottom:1px solid rgba(96,190,255,.25); padding-bottom:9px; margin-bottom:10px; }
@@ -112,8 +112,8 @@
     #minimap { width:148px; height:148px; }
     #balCanvas { width:148px; height:73px; }
     #console { display:none; }
-    #btnMenu { bottom:14px; }
-    #controls { bottom:64px; }
+    #btnMenu { left:10px; padding:7px 12px; font-size:10.5px; }
+    #controls { left:10px; right:10px; width:auto; top:calc(var(--hdrH) + 8px); }
    
   }
 </style>
@@ -122,7 +122,7 @@
 <canvas id="scene"></canvas>
 <div id="vignette"></div>
 
-<div id="logoPlate"><img src="uth-logo.png" alt="UTH — University of Transport Ho Chi Minh City"></div>
+<div id="logoPlate"><button id="btnMenu">🎛 ĐIỀU KHIỂN</button><img src="uth-logo.png" alt="UTH — University of Transport Ho Chi Minh City"></div>
 
 <div class="hud" id="telemetry">
   <div class="hd"><span>NAV · TELEMETRY</span><span class="live" id="tMode" style="color:#ffb04d">● MÔ PHỎNG</span></div>
@@ -165,7 +165,6 @@
   </div>
 </div>
 
-<button id="btnMenu">🎛 ĐIỀU KHIỂN</button>
 <div class="hud" id="controls" style="display:none">
   <div class="popHd"><span>ĐIỀU KHIỂN HIỂN THỊ</span><button id="btnClosePop" title="Đóng">✕</button></div>
   <div class="popSec">CAMERA</div>
