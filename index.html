@@ -86,10 +86,10 @@
 <div id="logoPlate"><img src="uth-logo.png" alt="UTH — University of Transport Ho Chi Minh City"></div>
 
 <div class="hud" id="telemetry">
-  <div class="hd"><span>NAV · TELEMETRY</span><span class="live">● LIVE</span></div>
+  <div class="hd"><span>NAV · TELEMETRY</span><span class="live" id="tMode" style="color:#ffb04d">● MÔ PHỎNG</span></div>
   <div class="row"><span class="k">UTC</span><span class="v" id="tUtc">--:--:--</span></div>
-  <div class="row"><span class="k">LAT</span><span class="v" id="tLat">--</span></div>
-  <div class="row"><span class="k">LON</span><span class="v" id="tLon">--</span></div>
+  <div class="row"><span class="k" id="kLat">LAT</span><span class="v" id="tLat">--</span></div>
+  <div class="row"><span class="k" id="kLon">LON</span><span class="v" id="tLon">--</span></div>
   <div class="row"><span class="k">HDG</span><span class="v" id="tHdg">--</span></div>
   <div class="row"><span class="k">COG</span><span class="v" id="tCog">--</span></div>
   <div class="row"><span class="k">SOG</span><span class="v" id="tSog">--</span></div>
@@ -167,6 +167,7 @@
 <script type="importmap">
 { "imports": { "three": "./three.module.js", "three/addons/": "./addons/" } }
 </script>
+<script src="mqtt.min.js"></script>
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -1182,6 +1183,63 @@ try {
   balOK = true;
 } catch (e) { console.warn('balance widget disabled', e); }
 
+
+/* ============ LIVE DATA from ESP32 (MQTT over WSS) ============
+   Contract — the ESP32 publishes JSON to topic  bas/DP_SHIP_001/telemetry
+     {"x": <metres east>, "y": <metres north>, "hdg": <degrees 0-360>,
+      "rot": <deg/min, optional — derived from heading when absent>}
+   at ~1 Hz to the same EMQX broker the lidar firmware already uses
+   (the board posts to :8883/TLS; the page subscribes over WSS :8084).
+   While the feed is fresh (< 6 s) the page mirrors the real model:
+   telemetry, compass, minimap, HDG/ROT/SOG charts and the 3D ship's
+   heading + position all go real. When the feed stops, the built-in
+   simulation quietly takes over again so the stand never goes blank. */
+const LIVE = { on: false, x: 0, y: 0, hdg: 0, rot: 0, cog: 0, sogKn: 0,
+               lastMsgPerf: -1e12, prevHdg: null, hist: [],
+               sx: 0, sz: 0, init: false, modeShown: '' };
+window.__live = LIVE;
+try {
+  const qs = new URLSearchParams(location.search);
+  const brokerUrl = qs.get('broker') || 'wss://broker.emqx.io:8084/mqtt';
+  const liveTopic = qs.get('topic') || 'bas/DP_SHIP_001/telemetry';
+  const mq = mqtt.connect(brokerUrl, {
+    clientId: 'hh-web-' + Math.random().toString(16).slice(2, 10),
+    reconnectPeriod: 3000, connectTimeout: 9000
+  });
+  window.__mq = mq;
+  mq.on('connect', () => mq.subscribe(liveTopic));
+  mq.on('message', (topic, payload) => {
+    try {
+      const d = JSON.parse(new TextDecoder().decode(payload));
+      const hdgIn = (typeof d.hdg === 'number') ? d.hdg : d.heading;
+      if (typeof d.x !== 'number' || typeof d.y !== 'number' || typeof hdgIn !== 'number') return;
+      const hdg = ((hdgIn % 360) + 360) % 360;
+      const nowT = performance.now() / 1000;
+      /* ROT / SOG / COG are derived over a >= 2.5 s sliding window, not from
+         consecutive packets: browsers can deliver queued packets in bursts,
+         which would otherwise spike the rates. Clamps keep the readouts
+         inside what a model ship in a basin can physically do. */
+      LIVE.hist.push({ t: nowT, hdg, x: d.x, y: d.y });
+      while (LIVE.hist.length > 2 && nowT - LIVE.hist[0].t > 4) LIVE.hist.shift();
+      const h0 = LIVE.hist[0], span = nowT - h0.t;
+      if (LIVE.hist.length === 1) LIVE.cog = hdg;
+      if (typeof d.rot === 'number') LIVE.rot += (d.rot - LIVE.rot) * 0.5;
+      else if (span >= 2.5) {
+        const dh = ((hdg - h0.hdg + 540) % 360) - 180;
+        LIVE.rot += (THREE.MathUtils.clamp(dh / span * 60, -45, 45) - LIVE.rot) * 0.35;
+      }
+      if (span >= 2.5) {
+        const dist = Math.hypot(d.x - h0.x, d.y - h0.y);
+        LIVE.sogKn += (THREE.MathUtils.clamp(dist / span * 1.944, 0, 8) - LIVE.sogKn) * 0.35;
+        if (dist > 0.05) LIVE.cog = (Math.atan2(d.x - h0.x, d.y - h0.y) * 180 / Math.PI + 360) % 360;
+      }
+      LIVE.x = d.x; LIVE.y = d.y; LIVE.hdg = hdg;
+      LIVE.prevHdg = hdg;
+      LIVE.lastMsgPerf = performance.now();
+    } catch (e) { /* ignore malformed packets */ }
+  });
+} catch (e) { console.warn('MQTT live feed unavailable', e); }
+
 /* ============ navigation simulation ============ */
 const LAT0 = 20.8650, LON0 = 106.6840, M_PER_UNIT = 15;
 let u = 0, sailing = true, headingDeg = 0, sogKn = 0, windNow = 13, foamFade = 0;
@@ -1209,6 +1267,7 @@ function sensors(t) {
   const wind = 13.5 + Math.sin(t * 0.21 + 1.3) * 3.2 + Math.sin(t * 0.9) * 0.8;
   const windDir = (205 + Math.sin(t * 0.05) * 25 + 360) % 360;
   const depth = 21 + Math.sin(shipPos.x * 0.021) * 4.5 + Math.cos(shipPos.z * 0.017) * 3.5;
+  if (LIVE.on) return { sog: LIVE.sogKn, stw: LIVE.sogKn, wind, windDir, depth };
   return { sog, stw, wind, windDir, depth };
 }
 function beaufort(kn) { return kn < 1 ? 0 : kn < 4 ? 1 : kn < 7 ? 2 : kn < 11 ? 3 : kn < 17 ? 4 : kn < 22 ? 5 : 6; }
@@ -1221,7 +1280,7 @@ controls.minDistance = 12; controls.maxDistance = 520;
 let camMode = 'tongquan';
 function camDesired(t) {
   const h = headingDeg * Math.PI / 180;
-  const fx = Math.sin(h), fz = Math.cos(h);
+  const fx = Math.sin(h), fz = LIVE.on ? -Math.cos(h) : Math.cos(h);
   if (camMode === 'chase') return shipPos.clone().add(new THREE.Vector3(-fx * 50, 16, -fz * 50));
   if (camMode === 'bow')   return shipPos.clone().add(new THREE.Vector3(fx * 43, 11, fz * 43));
   if (camMode === 'top')   return shipPos.clone().add(new THREE.Vector3(0, 82, 0.01));
@@ -1443,6 +1502,23 @@ function updateHud(t) {
   el('tSea').innerHTML = 'BF ' + beaufort(s.wind) + '<em>cấp</em>';
   el('tDepth').innerHTML = s.depth.toFixed(1) + '<em>m</em>';
   el('tRng').innerHTML = (rng / 1852).toFixed(2) + '<em>NM → WPT' + wpt + '</em>';
+  /* ESP32 live mode: badge + position rows switch to tank-frame X/Y (metres) */
+  const hudMode = LIVE.on ? 'live' : 'sim';
+  if (hudMode !== LIVE.modeShown) {
+    LIVE.modeShown = hudMode;
+    if (LIVE.on) {
+      el('tMode').textContent = '● ESP32 · LIVE'; el('tMode').style.color = '#3dff8e';
+      el('kLat').textContent = 'X'; el('kLon').textContent = 'Y';
+    } else {
+      el('tMode').textContent = '● MÔ PHỎNG'; el('tMode').style.color = '#ffb04d';
+      el('kLat').textContent = 'LAT'; el('kLon').textContent = 'LON';
+    }
+  }
+  if (LIVE.on) {
+    el('tLat').textContent = LIVE.x.toFixed(2) + ' m';
+    el('tLon').textContent = LIVE.y.toFixed(2) + ' m';
+    el('tRng').innerHTML = Math.hypot(LIVE.x, LIVE.y).toFixed(2) + '<em>m · GỐC</em>';
+  }
   el('cSogV').textContent = s.sog.toFixed(1) + ' / ' + s.stw.toFixed(1);
   el('cHdgV').textContent = headingDeg.toFixed(0) + ' / ' + cogDeg.toFixed(0);
   el('cRotV').textContent = (rotNow >= 0 ? '+' : '') + rotNow.toFixed(0);
@@ -1536,7 +1612,22 @@ function animate() {
     if (firstFrame) prevHeading = headingDeg; else prevHeading = headingDeg;
     /* COG drifts off HDG under wind + current (leeway) */
     cogDeg = (headingDeg + (sailing ? 1.8 * Math.sin(t * 0.07) + 1.1 * Math.sin(t * 0.19 + 2) : 0) + 360) % 360;
-    const yaw = Math.atan2(-tan.z, tan.x);
+    /* LIVE override: mirror the real ESP32 model while its feed is fresh.
+       Tank frame: x = east, y = north (metres) -> scene x = +x, z = -y,
+       1 m = 10 units around the basin centre, smoothed toward the target. */
+    LIVE.on = (performance.now() - LIVE.lastMsgPerf) / 1000 < 6;
+    if (LIVE.on) {
+      const wx = THREE.MathUtils.clamp(LIVE.x * 10, -58, 58);
+      const wz = THREE.MathUtils.clamp(-LIVE.y * 10, -58, 58);
+      if (!LIVE.init) { LIVE.sx = wx; LIVE.sz = wz; LIVE.init = true; }
+      LIVE.sx += (wx - LIVE.sx) * 0.07; LIVE.sz += (wz - LIVE.sz) * 0.07;
+      shipPos.set(LIVE.sx, 0, LIVE.sz);
+      headingDeg = LIVE.hdg;
+      cogDeg = LIVE.cog;
+      rotNow = LIVE.rot;
+      xteNow = 0;
+    } else LIVE.init = false;
+    const yaw = LIVE.on ? Math.PI / 2 - headingDeg * Math.PI / 180 : Math.atan2(-tan.z, tan.x);
     /* heave/pitch/roll sampled from the real wave field */
     const hC = waveH(shipPos.x, shipPos.z, t);
     const fx = Math.cos(yaw), fz = -Math.sin(yaw);        // bow direction in world (model +X after yaw)
