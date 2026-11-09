@@ -168,7 +168,7 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.1;
+renderer.toneMappingExposure = 1.02;
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x9fd2f2, 300, 860);
@@ -177,13 +177,15 @@ camera.position.set(30, 265, 560);
 
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-scene.environmentIntensity = 0.5;
-scene.add(new THREE.HemisphereLight(0xd8ecff, 0x1c4d75, 0.55));
-const sun = new THREE.DirectionalLight(0xfff2dd, 2.4);
+scene.environmentIntensity = 0.38;
+scene.add(new THREE.HemisphereLight(0xd8ecff, 0x1c4d75, 0.42));
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.85);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.left = -160; sun.shadow.camera.right = 160;
 sun.shadow.camera.top = 160; sun.shadow.camera.bottom = -160;
+sun.shadow.bias = -0.00035; sun.shadow.normalBias = 0.035; sun.shadow.radius = 4;
+const bounce = new THREE.DirectionalLight(0xbcd9f2, 0.32); bounce.position.set(-120, 70, -90); scene.add(bounce);
 scene.add(sun); scene.add(sun.target);
 
 /* sky dome */
@@ -451,6 +453,524 @@ const capsGeo = new THREE.BufferGeometry();
 capsGeo.setAttribute('position', new THREE.BufferAttribute(capsPos, 3));
 let caps = null;
 
+
+/* ============ REALISM PASS: procedural PBR surfaces + water micro-detail ============ */
+let radarBar = null;
+let seaNormalTex = null;
+function mulberry32(a) {
+  return function() {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function texFromCanvas(c, srgb = true) {
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 8;
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+function makeSurfaceMaps(o) {
+  const S = 512, rand = mulberry32(o.seed || 1);
+  const cc = document.createElement('canvas'); cc.width = cc.height = S;
+  const g = cc.getContext('2d');
+  g.fillStyle = o.base; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 250; i++) {
+    g.globalAlpha = 0.025 + rand() * 0.065;
+    g.fillStyle = rand() < 0.52 ? o.light : o.dark;
+    const w = 12 + rand() * 120, h = 8 + rand() * 80;
+    if (rand() < 0.45) { g.beginPath(); g.ellipse(rand() * S, rand() * S, w, h, rand() * 3, 0, 7); g.fill(); }
+    else g.fillRect(rand() * S, rand() * S, w, h);
+  }
+  g.globalAlpha = 1;
+  const speckles = o.speckles || 700;
+  for (let i = 0; i < speckles; i++) {
+    g.globalAlpha = 0.04 + rand() * 0.13;
+    g.fillStyle = rand() < 0.5 ? o.dark : o.light;
+    g.fillRect(rand() * S, rand() * S, 1 + rand() * 2.4, 1 + rand() * 2.4);
+  }
+  g.globalAlpha = 1;
+  const streaks = o.streaks || 0;
+  for (let i = 0; i < streaks; i++) {
+    const x = rand() * S, w = 1.5 + rand() * 8, len = 45 + rand() * 230;
+    const y = rand() * S;
+    const gr = g.createLinearGradient(0, y, 0, y + len);
+    const col = o.rust && rand() < 0.55 ? '92,48,22' : '18,20,20';
+    gr.addColorStop(0, 'rgba(' + col + ',' + (0.10 + rand() * 0.17) + ')');
+    gr.addColorStop(1, 'rgba(' + col + ',0)');
+    g.fillStyle = gr; g.fillRect(x, y, w, len);
+  }
+  const oils = o.oil || 0;
+  for (let i = 0; i < oils; i++) {
+    const x = rand() * S, y = rand() * S, r = 18 + rand() * 70;
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, 'rgba(8,10,10,' + (0.08 + rand() * 0.16) + ')');
+    gr.addColorStop(1, 'rgba(8,10,10,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+  }
+  const rc = document.createElement('canvas'); rc.width = rc.height = S;
+  const r = rc.getContext('2d');
+  const rv = Math.round((o.rough || 0.6) * 255);
+  r.fillStyle = 'rgb(' + rv + ',' + rv + ',' + rv + ')'; r.fillRect(0, 0, S, S);
+  for (let i = 0; i < 180; i++) {
+    const d = Math.round((rand() - 0.5) * 2 * (o.roughVar || 0.14) * 255);
+    const v = Math.max(20, Math.min(245, rv + d));
+    r.globalAlpha = 0.16 + rand() * 0.25; r.fillStyle = 'rgb(' + v + ',' + v + ',' + v + ')';
+    r.fillRect(rand() * S, rand() * S, 10 + rand() * 100, 8 + rand() * 70);
+  }
+  r.globalAlpha = 1;
+  const bc = document.createElement('canvas'); bc.width = bc.height = S;
+  const b = bc.getContext('2d');
+  b.fillStyle = '#808080'; b.fillRect(0, 0, S, S);
+  for (let i = 0; i < 1500; i++) {
+    const v = 96 + Math.floor(rand() * 64);
+    b.globalAlpha = 0.10 + rand() * 0.20; b.fillStyle = 'rgb(' + v + ',' + v + ',' + v + ')';
+    b.fillRect(rand() * S, rand() * S, 1 + rand() * 3, 1 + rand() * 3);
+  }
+  b.globalAlpha = 1;
+  function seams(ctx, darkCol, lightCol) {
+    if (o.seamsX) for (let i = 1; i < o.seamsX; i++) {
+      const x = Math.round(i * S / o.seamsX);
+      ctx.globalAlpha = 0.34; ctx.fillStyle = darkCol; ctx.fillRect(x, 0, 2, S);
+      ctx.globalAlpha = 0.20; ctx.fillStyle = lightCol; ctx.fillRect(x + 2, 0, 1, S);
+    }
+    if (o.seamsY) for (let i = 1; i < o.seamsY; i++) {
+      const y = Math.round(i * S / o.seamsY);
+      ctx.globalAlpha = 0.34; ctx.fillStyle = darkCol; ctx.fillRect(0, y, S, 2);
+      ctx.globalAlpha = 0.20; ctx.fillStyle = lightCol; ctx.fillRect(0, y + 2, S, 1);
+    }
+    ctx.globalAlpha = 1;
+  }
+  seams(g, o.dark, o.light); seams(r, '#2c2c2c', '#e8e8e8'); seams(b, '#111111', '#f2f2f2');
+  return { map: texFromCanvas(cc, true), roughnessMap: texFromCanvas(rc, false), bumpMap: texFromCanvas(bc, false) };
+}
+function makeTireMaps() {
+  const S = 512, rand = mulberry32(771);
+  const cc = document.createElement('canvas'); cc.width = cc.height = S;
+  const g = cc.getContext('2d');
+  g.fillStyle = '#17181a'; g.fillRect(0, 0, S, S);
+  for (let x = 0; x < S; x += 16) { g.fillStyle = (x / 16) % 2 ? '#101112' : '#222426'; g.fillRect(x, 0, 8, S); }
+  for (let i = 0; i < 900; i++) { g.globalAlpha = 0.05 + rand() * 0.12; g.fillStyle = rand() < 0.5 ? '#000' : '#5a5d5e'; g.fillRect(rand() * S, rand() * S, 2, 2); }
+  g.globalAlpha = 1;
+  const rc = document.createElement('canvas'); rc.width = rc.height = S;
+  const r = rc.getContext('2d'); r.fillStyle = '#f0f0f0'; r.fillRect(0, 0, S, S);
+  const bc = document.createElement('canvas'); bc.width = bc.height = S;
+  const b = bc.getContext('2d'); b.fillStyle = '#808080'; b.fillRect(0, 0, S, S);
+  for (let x = 0; x < S; x += 16) { b.fillStyle = (x / 16) % 2 ? '#2a2a2a' : '#d8d8d8'; b.fillRect(x, 0, 8, S); }
+  const maps = { map: texFromCanvas(cc, true), roughnessMap: texFromCanvas(rc, false), bumpMap: texFromCanvas(bc, false) };
+  Object.values(maps).forEach(t => t.repeat.set(4, 1));
+  return maps;
+}
+function ensureProceduralUV(geometry, scale = 6.5) {
+  if (!geometry || geometry.attributes.uv || !geometry.attributes.position || !geometry.attributes.normal) return;
+  const pos = geometry.attributes.position, nor = geometry.attributes.normal;
+  const uv = new Float32Array(pos.count * 2);
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const nx = Math.abs(nor.getX(i)), ny = Math.abs(nor.getY(i)), nz = Math.abs(nor.getZ(i));
+    let a, c;
+    if (ny >= nx && ny >= nz) { a = x; c = z; }
+    else if (nz >= nx) { a = x; c = y; }
+    else { a = z; c = y; }
+    uv[i * 2] = a / scale; uv[i * 2 + 1] = c / scale;
+  }
+  geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+}
+function enhanceShipMaterials(model) {
+  const seen = new Set(), mats = {};
+  model.traverse((oo) => {
+    if (!oo.isMesh) return;
+    oo.castShadow = true; oo.receiveShadow = true;
+    ensureProceduralUV(oo.geometry);
+    const list = Array.isArray(oo.material) ? oo.material : [oo.material];
+    for (const m of list) {
+      if (!m || seen.has(m)) continue;
+      seen.add(m); if (m.name) mats[m.name] = m;
+      if ('envMapIntensity' in m) m.envMapIntensity = 0.55;
+    }
+  });
+  function apply(name, maps, rough, metal, env, bumpScale = 0.045) {
+    const m = mats[name]; if (!m) return;
+    if (maps) {
+      m.map = maps.map; m.roughnessMap = maps.roughnessMap; m.bumpMap = maps.bumpMap;
+      m.bumpScale = bumpScale; m.color.set(0xffffff); m.roughness = 1.0;
+    } else m.roughness = rough;
+    m.metalness = metal; m.envMapIntensity = env; m.needsUpdate = true;
+  }
+  apply('Yellow', makeSurfaceMaps({ seed: 11, base: '#185f9d', light: '#2d7ab8', dark: '#0a3d68', rough: 0.58, roughVar: 0.17, seamsX: 6, seamsY: 4, streaks: 34, rust: true, speckles: 850 }), 0.58, 0.08, 0.5, 0.05);
+  apply('Yellow2', makeSurfaceMaps({ seed: 12, base: '#1d6cae', light: '#3584c2', dark: '#0e4777', rough: 0.55, roughVar: 0.16, seamsX: 5, seamsY: 3, streaks: 22, rust: true }), 0.55, 0.08, 0.52);
+  apply('Red', makeSurfaceMaps({ seed: 13, base: '#0a2d52', light: '#174a76', dark: '#030f1e', rough: 0.68, roughVar: 0.18, seamsX: 6, seamsY: 4, streaks: 48, rust: true, speckles: 1100 }), 0.68, 0.06, 0.42, 0.055);
+  apply('Blue', makeSurfaceMaps({ seed: 14, base: '#1a639f', light: '#2f7db9', dark: '#0d406c', rough: 0.52, roughVar: 0.14, seamsX: 4, seamsY: 3, streaks: 12 }), 0.52, 0.08, 0.55);
+  apply('White', makeSurfaceMaps({ seed: 15, base: '#d8dee0', light: '#f5f7f7', dark: '#a7b2b4', rough: 0.61, roughVar: 0.15, seamsX: 5, seamsY: 4, streaks: 20, speckles: 650 }), 0.61, 0.03, 0.46, 0.035);
+  apply('Deck', makeSurfaceMaps({ seed: 16, base: '#4b5954', light: '#68766f', dark: '#222d2a', rough: 0.94, roughVar: 0.10, seamsX: 8, seamsY: 5, streaks: 8, oil: 14, speckles: 1800 }), 0.94, 0.04, 0.30, 0.06);
+  apply('DeckDk', makeSurfaceMaps({ seed: 17, base: '#303a3d', light: '#46545a', dark: '#171d20', rough: 0.88, roughVar: 0.12, seamsX: 5, seamsY: 3, streaks: 18, rust: true }), 0.88, 0.10, 0.34);
+  apply('Grey', makeSurfaceMaps({ seed: 18, base: '#6f7a7e', light: '#929da1', dark: '#424b4f', rough: 0.50, roughVar: 0.16, seamsX: 3, seamsY: 3, streaks: 16, rust: true }), 0.50, 0.42, 0.62);
+  apply('Dark', makeSurfaceMaps({ seed: 19, base: '#22282c', light: '#39434a', dark: '#0b0e10', rough: 0.68, roughVar: 0.14, streaks: 12, rust: true }), 0.68, 0.32, 0.45);
+  apply('Black', makeSurfaceMaps({ seed: 20, base: '#14171a', light: '#2b3136', dark: '#050607', rough: 0.62, roughVar: 0.13, streaks: 8 }), 0.62, 0.24, 0.42);
+  apply('FunnelBlue', makeSurfaceMaps({ seed: 21, base: '#081f3d', light: '#143a63', dark: '#020a17', rough: 0.54, roughVar: 0.16, seamsX: 4, seamsY: 4, streaks: 42 }), 0.54, 0.09, 0.5, 0.05);
+  apply('Orange', makeSurfaceMaps({ seed: 22, base: '#b5441d', light: '#d76a36', dark: '#67220f', rough: 0.63, roughVar: 0.16, seamsX: 4, seamsY: 2, streaks: 20 }), 0.63, 0.04, 0.44);
+  apply('Tire', makeTireMaps(), 0.96, 0.0, 0.22, 0.11);
+  apply('RedDk', makeSurfaceMaps({ seed: 23, base: '#5b241c', light: '#7d4032', dark: '#2c100c', rough: 0.62, roughVar: 0.15, streaks: 16, rust: true }), 0.62, 0.10, 0.36);
+  apply('Rope', makeSurfaceMaps({ seed: 24, base: '#7a6748', light: '#a58d61', dark: '#463822', rough: 0.96, roughVar: 0.08, speckles: 1500 }), 0.96, 0.0, 0.22, 0.07);
+  if (mats.Glass) {
+    const m = mats.Glass;
+    m.color.set(0x081a26); m.roughness = 0.06; m.metalness = 0.12; m.envMapIntensity = 1.75; m.needsUpdate = true;
+  }
+  apply('Brass', null, 0.36, 0.86, 1.05);
+  apply('PropBlk', null, 0.40, 0.80, 0.72);
+  if (mats.NameBlue) { mats.NameBlue.color.set(0xe9eeee); mats.NameBlue.roughness = 0.48; mats.NameBlue.envMapIntensity = 0.4; }
+  radarBar = model.getObjectByName('RadarBar');
+}
+function makeWaterNormalTexture() {
+  const S = 256, rand = mulberry32(991), waves = [];
+  for (let i = 0; i < 24; i++) {
+    let kx = 0, ky = 0;
+    while (kx === 0 && ky === 0) { kx = Math.floor(rand() * 9) - 4; ky = Math.floor(rand() * 9) - 4; }
+    waves.push({ kx, ky, p: rand() * Math.PI * 2, a: 1 / (1 + Math.abs(kx) + Math.abs(ky)) });
+  }
+  function h(x, y) {
+    let v = 0;
+    for (const w of waves) v += Math.sin((w.kx * x + w.ky * y) / S * Math.PI * 2 + w.p) * w.a;
+    return v;
+  }
+  const c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d'), img = g.createImageData(S, S);
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const dx = h((x + 1) % S, y) - h((x - 1 + S) % S, y);
+    const dy = h(x, (y + 1) % S) - h(x, (y - 1 + S) % S);
+    let nx = -dx * 1.55, ny = dy * 1.55, nz = 1;
+    const il = 1 / Math.hypot(nx, ny, nz); nx *= il; ny *= il; nz *= il;
+    const k = (y * S + x) * 4;
+    img.data[k] = (nx * 0.5 + 0.5) * 255; img.data[k + 1] = (ny * 0.5 + 0.5) * 255;
+    img.data[k + 2] = (nz * 0.5 + 0.5) * 255; img.data[k + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  const t = texFromCanvas(c, false); t.repeat.set(44, 44); return t;
+}
+function enhanceOceanSurface() {
+  if (!ocean || !seaTex) return;
+  seaTex.repeat.set(42, 42); seaTex.bumpScale = 0.16;
+  seaNormalTex = makeWaterNormalTexture();
+  ocean.material.map = seaTex;
+  ocean.material.normalMap = seaNormalTex;
+  ocean.material.normalScale.set(0.48, 0.48);
+  ocean.material.color.set(0x0d67ad);
+  ocean.material.roughness = 0.30;
+  ocean.material.metalness = 0.02;
+  ocean.material.envMapIntensity = 0.75;
+  ocean.material.needsUpdate = true;
+}
+enhanceOceanSurface();
+
+
+/* ============ REALISM PASS 2: fittings, seams, weathering and deck machinery ============ */
+const detailMats = {
+  seam: new THREE.MeshStandardMaterial({ color:0x102c47, roughness:0.72, metalness:0.12 }),
+  darkSteel: new THREE.MeshStandardMaterial({ color:0x252d31, roughness:0.58, metalness:0.55 }),
+  steel: new THREE.MeshStandardMaterial({ color:0x778187, roughness:0.42, metalness:0.62 }),
+  galvanized: new THREE.MeshStandardMaterial({ color:0x9aa4a7, roughness:0.55, metalness:0.45 }),
+  whitePaint: new THREE.MeshStandardMaterial({ color:0xdde3e4, roughness:0.58, metalness:0.05 }),
+  frame: new THREE.MeshStandardMaterial({ color:0x111c24, roughness:0.48, metalness:0.30 }),
+  glass: new THREE.MeshStandardMaterial({ color:0x0a1d2a, roughness:0.08, metalness:0.12 }),
+  rust: new THREE.MeshStandardMaterial({ color:0x6e3a1e, roughness:0.92, metalness:0.02 }),
+  rubber: new THREE.MeshStandardMaterial({ color:0x111315, roughness:0.94, metalness:0.0 }),
+  wornGrey: new THREE.MeshStandardMaterial({ color:0x596266, roughness:0.82, metalness:0.18 }),
+  safety: new THREE.MeshStandardMaterial({ color:0xc79a26, roughness:0.78, metalness:0.03, transparent:true, opacity:0.62 }),
+  redCabinet: new THREE.MeshStandardMaterial({ color:0x9e2f22, roughness:0.58, metalness:0.08 }),
+  wood: new THREE.MeshStandardMaterial({ color:0x5d4932, roughness:0.9, metalness:0.0 }),
+  algae: new THREE.MeshStandardMaterial({ color:0x11251d, roughness:0.96, metalness:0.0 })
+};
+const unitBoxGeo = new THREE.BoxGeometry(1, 1, 1);
+const unitCylGeo = new THREE.CylinderGeometry(1, 1, 1, 10);
+const unitSphereGeo = new THREE.SphereGeometry(1, 14, 10);
+function DBox(parent, mat, x, y, z, sx, sy, sz, rx = 0, ry = 0, rz = 0) {
+  const m = new THREE.Mesh(unitBoxGeo, mat);
+  m.position.set(x, y, z); m.scale.set(sx, sy, sz); m.rotation.set(rx, ry, rz);
+  m.castShadow = true; m.receiveShadow = true; parent.add(m); return m;
+}
+function DCyl(parent, mat, x, y, z, r, len, rx = 0, ry = 0, rz = 0) {
+  const m = new THREE.Mesh(unitCylGeo, mat);
+  m.position.set(x, y, z); m.scale.set(r, len, r); m.rotation.set(rx, ry, rz);
+  m.castShadow = true; m.receiveShadow = true; parent.add(m); return m;
+}
+function DSphere(parent, mat, x, y, z, rx, ry, rz) {
+  const m = new THREE.Mesh(unitSphereGeo, mat);
+  m.position.set(x, y, z); m.scale.set(rx, ry, rz);
+  m.castShadow = true; m.receiveShadow = true; parent.add(m); return m;
+}
+function DTube(parent, mat, ax, ay, az, bx, by, bz, r) {
+  const a = new THREE.Vector3(ax, ay, az), b = new THREE.Vector3(bx, by, bz);
+  const d = b.clone().sub(a), len = d.length();
+  const m = new THREE.Mesh(unitCylGeo, mat);
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  m.scale.set(r, len, r);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+  m.castShadow = true; m.receiveShadow = true; parent.add(m); return m;
+}
+function DTorus(parent, mat, x, y, z, radius, tube, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1) {
+  const m = new THREE.Mesh(new THREE.TorusGeometry(radius, tube, 8, 24), mat);
+  m.position.set(x, y, z); m.rotation.set(rx, ry, rz); m.scale.set(sx, sy, 1);
+  m.castShadow = true; m.receiveShadow = true; parent.add(m); return m;
+}
+const HULL_ST = [[-26,5.0,2.55],[-25,6.0,2.60],[-22,6.4,2.65],[-16,6.6,2.70],[-8,6.7,2.80],[0,6.7,2.90],[8,6.6,3.05],[14,6.3,3.25],[19,5.7,3.55],[23,4.4,3.95],[25.5,2.5,4.25],[26.9,0.3,4.45]];
+function interpST(x, col) {
+  for (let i = 0; i < HULL_ST.length - 1; i++) {
+    const a = HULL_ST[i], b = HULL_ST[i + 1];
+    if (x >= a[0] && x <= b[0]) { const t = (x - a[0]) / (b[0] - a[0]); return a[col] + (b[col] - a[col]) * t; }
+  }
+  return HULL_ST[HULL_ST.length - 1][col];
+}
+const hullHW = x => interpST(x, 1);
+const deckYAt = x => interpST(x, 2);
+const sideZAt = (x, s, f = 1.065, extra = 0.04) => s * (hullHW(x) * f + extra);
+function makeStreakTexture(kind) {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d'), rand = mulberry32(kind === 'rust' ? 331 : 332);
+  const n = kind === 'rust' ? 30 : 24;
+  for (let i = 0; i < n; i++) {
+    const x = 12 + rand() * 232, w = 2 + rand() * (kind === 'rust' ? 9 : 16), len = 70 + rand() * 175;
+    const gr = g.createLinearGradient(0, 0, 0, len);
+    const col = kind === 'rust' ? '104,54,24' : '2,5,8';
+    gr.addColorStop(0, 'rgba(' + col + ',' + (0.20 + rand() * 0.26) + ')');
+    gr.addColorStop(1, 'rgba(' + col + ',0)');
+    g.fillStyle = gr;
+    g.save(); g.translate(x, 0); g.fillRect(-w / 2, 0, w, len); g.restore();
+  }
+  for (let i = 0; i < 360; i++) {
+    g.fillStyle = kind === 'rust' ? 'rgba(80,40,18,0.20)' : 'rgba(0,0,0,0.18)';
+    g.fillRect(rand() * 256, rand() * 110, 1.6, 1.6);
+  }
+  return texFromCanvas(c, true);
+}
+function makeDraftTexture() {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(238,244,244,0.96)'; g.strokeStyle = 'rgba(238,244,244,0.96)';
+  g.font = '700 27px Arial'; g.textAlign = 'left'; g.lineWidth = 4;
+  ['8', '6', '4', '2'].forEach((n, i) => {
+    const y = 48 + i * 55;
+    g.fillText(n, 13, y);
+    g.beginPath(); g.moveTo(54, y - 8); g.lineTo(116, y - 8); g.stroke();
+  });
+  g.font = '700 19px Arial'; g.fillText('M', 14, 248);
+  return texFromCanvas(c, true);
+}
+function makePlimsollTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.strokeStyle = 'rgba(238,244,244,0.95)'; g.fillStyle = 'rgba(238,244,244,0.95)'; g.lineWidth = 7;
+  g.beginPath(); g.arc(104, 126, 58, 0, Math.PI * 2); g.stroke();
+  g.beginPath(); g.moveTo(28, 126); g.lineTo(180, 126); g.stroke();
+  g.lineWidth = 5;
+  [78, 104, 130, 156].forEach(y => { g.beginPath(); g.moveTo(188, y); g.lineTo(238, y); g.stroke(); });
+  g.beginPath(); g.moveTo(188, 62); g.lineTo(188, 184); g.stroke();
+  return texFromCanvas(c, true);
+}
+function addSideDecal(parent, tex, w, h, x, y, s, fixedZ = null) {
+  const x1 = x - w / 2, x2 = x + w / 2;
+  const z1 = fixedZ !== null ? s * fixedZ : sideZAt(x1, s, 1.075, 0.10);
+  const z2 = fixedZ !== null ? s * fixedZ : sideZAt(x2, s, 1.075, 0.10);
+  const ang = Math.atan2(-(Math.abs(z2) - Math.abs(z1)), w);
+  const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.88, metalness: 0,
+    depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+  m.position.set(x, y, (z1 + z2) / 2);
+  m.rotation.y = s > 0 ? ang : Math.PI + ang;
+  m.renderOrder = 4; parent.add(m); return m;
+}
+function buildShipDetails() {
+  const g = new THREE.Group(); g.name = 'REALISM_DETAILS';
+  const rustTex = makeStreakTexture('rust'), sootTex = makeStreakTexture('soot');
+  const draftTex = makeDraftTexture(), plimsollTex = makePlimsollTexture();
+
+  for (const s of [-1, 1]) {
+    /* hull plate seams: raised weld beads following the flare of the side */
+    for (const y of [0.52, 1.12, 1.74]) {
+      for (let x = -24; x < 22; x += 4) {
+        DTube(g, detailMats.seam, x, y, sideZAt(x, s), x + 4, y, sideZAt(x + 4, s), 0.028);
+      }
+    }
+    for (let x = -22; x <= 20; x += 4) {
+      DTube(g, detailMats.seam, x, 0.36, sideZAt(x, s), x, 2.12, sideZAt(x, s), 0.024);
+    }
+    /* heavy rubbing strake + dark marine-growth band at the waterline */
+    for (let x = -24; x < 22; x += 4) {
+      DTube(g, detailMats.rubber, x, 2.02, sideZAt(x, s, 1.082, 0.07), x + 4, 2.02, sideZAt(x + 4, s, 1.082, 0.07), 0.085);
+      const xm = x + 2, dz = sideZAt(x + 4, s, 1.07, 0.05) - sideZAt(x, s, 1.07, 0.05);
+      const band = DBox(g, detailMats.algae, xm, 0.20, (sideZAt(x, s, 1.07, 0.05) + sideZAt(x + 4, s, 1.07, 0.05)) / 2,
+        4.06, 0.30, 0.045, 0, Math.atan2(-dz, 4), 0);
+      band.castShadow = false;
+    }
+    /* weather streaks, load-line marks and bow draft marks */
+    addSideDecal(g, rustTex, 2.3, 1.9, 15.5, 1.28, s);
+    addSideDecal(g, rustTex, 2.1, 1.7, 4.0, 1.22, s);
+    addSideDecal(g, rustTex, 2.4, 1.9, -10.5, 1.24, s);
+    addSideDecal(g, rustTex, 2.2, 1.8, -20.5, 1.20, s);
+    addSideDecal(g, plimsollTex, 1.65, 1.65, 0.4, 1.32, s);
+    addSideDecal(g, draftTex, 1.05, 2.1, 21.9, 1.18, s);
+    /* anchor hawse rim, dark mouth and chain run to the windlass */
+    const hz = s * (hullHW(24.65) * 1.0 + 0.10);
+    DCyl(g, detailMats.frame, 24.65, 3.05, hz, 0.31, 0.10, Math.PI / 2);
+    DTorus(g, detailMats.steel, 24.65, 3.05, hz + s * 0.06, 0.35, 0.05);
+    DTube(g, detailMats.darkSteel, 23.2, 5.12, s * 0.9, 24.15, 4.15, s * 2.15, 0.055);
+    DTube(g, detailMats.darkSteel, 24.15, 4.15, s * 2.15, 24.65, 3.22, hz, 0.055);
+    for (const px of [24.35, 24.0, 23.65]) {
+      DTube(g, detailMats.rust, px, 2.72, s * (hullHW(px) * 1.07 + 0.08), px - 0.12, 1.55, s * (hullHW(px - 0.12) * 1.07 + 0.08), 0.022);
+    }
+
+    /* superstructure panel seams */
+    const seamTier = (zAbs, xs, y, hgt) => {
+      for (const x of xs) DBox(g, detailMats.wornGrey, x, y, s * zAbs, 0.04, hgt, 0.045);
+    };
+    seamTier(5.035, [8.6, 11.2, 13.8, 16.2], 4.72, 2.75);
+    seamTier(5.235, [9.2, 12.0, 14.8], 7.52, 2.55);
+    seamTier(5.735, [9.2, 12.0, 14.8], 10.16, 2.35);
+    DBox(g, detailMats.wornGrey, 12, 5.98, s * 5.035, 10.2, 0.04, 0.045);
+    DBox(g, detailMats.wornGrey, 12, 8.72, s * 5.235, 10.2, 0.04, 0.045);
+    DBox(g, detailMats.wornGrey, 12, 9.18, s * 5.735, 9.6, 0.04, 0.045);
+    /* window frames behind the existing glass */
+    for (let i = 0; i < 4; i++) DBox(g, detailMats.frame, 9.6 + i * 1.95, 10.55, s * 5.708, 1.76, 1.18, 0.045);
+    for (let i = 0; i < 4; i++) DBox(g, detailMats.frame, 9.2 + i * 2.1, 7.60, s * 5.208, 1.03, 0.96, 0.045);
+    for (let i = 0; i < 3; i++) DBox(g, detailMats.frame, 10 + i * 2.1, 4.80, s * 5.008, 0.98, 0.91, 0.045);
+    /* a real side door with a small window, hinges and handle */
+    DBox(g, detailMats.frame, 7.35, 4.38, s * 5.055, 0.98, 2.28, 0.075);
+    DBox(g, detailMats.glass, 7.35, 4.98, s * 5.105, 0.52, 0.48, 0.03);
+    DBox(g, detailMats.steel, 7.72, 4.28, s * 5.115, 0.30, 0.045, 0.035);
+    DBox(g, detailMats.steel, 6.94, 4.78, s * 5.11, 0.05, 0.28, 0.03);
+    DBox(g, detailMats.steel, 6.94, 3.98, s * 5.11, 0.05, 0.28, 0.03);
+    /* louver vents */
+    const vent = (x, y, zAbs) => {
+      DBox(g, detailMats.frame, x, y, s * zAbs, 0.92, 0.68, 0.07);
+      for (let i = 0; i < 4; i++) DBox(g, detailMats.galvanized, x, y - 0.22 + i * 0.15, s * (zAbs + 0.045), 0.78, 0.055, 0.028);
+    };
+    vent(16.25, 5.38, 5.055); vent(8.15, 8.18, 5.255); vent(16.1, 7.55, 5.255);
+    /* stepped cable/pipe conduits up the accommodation block */
+    DTube(g, detailMats.steel, 6.70, 3.30, s * 5.09, 6.70, 6.05, s * 5.09, 0.035);
+    DTube(g, detailMats.steel, 6.70, 6.18, s * 5.29, 6.70, 8.78, s * 5.29, 0.035);
+    DTube(g, detailMats.steel, 17.05, 3.35, s * 5.09, 17.05, 8.70, s * 5.09, 0.030);
+
+    /* forecastle guard rails following the narrowing bow */
+    const railX = [13.5, 16, 18.5, 21, 23.5, 25.6];
+    for (let i = 0; i < railX.length; i++) {
+      const x = railX[i], z = s * hullHW(x) * 0.955, dy = deckYAt(x);
+      DTube(g, detailMats.galvanized, x, dy + 0.03, z, x, dy + 1.02, z, 0.038);
+      if (i < railX.length - 1) {
+        const x2 = railX[i + 1], z2 = s * hullHW(x2) * 0.955, dy2 = deckYAt(x2);
+        DTube(g, detailMats.galvanized, x, dy + 1.02, z, x2, dy2 + 1.02, z2, 0.034);
+        DTube(g, detailMats.galvanized, x, dy + 0.58, z, x2, dy2 + 0.58, z2, 0.026);
+      }
+    }
+    /* lifeboat grip lines, reflective band and davit falls */
+    for (const bx of [10.35, 11.5, 12.65]) DTorus(g, detailMats.darkSteel, bx, 8.2, s * 6.15, 0.80, 0.045, 0, Math.PI / 2);
+    DBox(g, detailMats.whitePaint, 11.5, 8.48, s * 6.99, 3.45, 0.15, 0.028);
+    DTube(g, detailMats.darkSteel, 10.2, 9.85, s * 5.90, 10.4, 8.88, s * 6.15, 0.020);
+    DTube(g, detailMats.darkSteel, 12.8, 9.85, s * 5.90, 12.6, 8.88, s * 6.15, 0.020);
+    /* tire sidewall rings + short hanging chains */
+    for (const tx of [17.5, 12.0, 8.0, 2.0, -6.0, -10.5, -14.0, -20.5]) {
+      const ty = deckYAt(tx) - 0.8, tz = s * (hullHW(tx) + 0.28);
+      DTorus(g, detailMats.wornGrey, tx, ty, tz + s * 0.275, 0.43, 0.034);
+      DTorus(g, detailMats.darkSteel, tx, ty + 0.82, s * (hullHW(tx) + 0.10), 0.085, 0.024);
+      DTorus(g, detailMats.darkSteel, tx, ty + 1.03, s * (hullHW(tx) + 0.10), 0.085, 0.024, 0, 0, Math.PI / 2);
+    }
+    /* funnel plate seams + soot staining */
+    for (const fx of [1.6, 3.6, 5.6]) DBox(g, detailMats.seam, fx, 9.9, s * 2.79, 0.045, 8.0, 0.045);
+    for (const fy of [8.1, 11.6]) DBox(g, detailMats.seam, 3.6, fy, s * 2.79, 5.25, 0.045, 0.045);
+    addSideDecal(g, sootTex, 4.7, 2.7, 3.6, 12.55, s, 2.84);
+  }
+
+  /* bridge front: mullions, rails and wipers on the existing glass */
+  for (const z of [-4.8, -2.4, 0, 2.4, 4.8]) DBox(g, detailMats.frame, 16.94, 10.55, z, 0.065, 1.14, 0.10);
+  DBox(g, detailMats.frame, 16.94, 11.12, 0, 0.065, 0.09, 9.85);
+  DBox(g, detailMats.frame, 16.94, 9.98, 0, 0.065, 0.09, 9.85);
+  for (const z of [-3.6, -1.2, 1.2, 3.6]) {
+    DBox(g, detailMats.frame, 16.98, 10.28, z + 0.22, 0.04, 0.88, 0.045, -0.48, 0, 0);
+    DCyl(g, detailMats.darkSteel, 16.97, 9.96, z, 0.055, 0.10, 0, 0, Math.PI / 2);
+  }
+  /* bridge-roof guard rails */
+  for (let z = -5.4; z <= 5.41; z += 2.16) DBox(g, detailMats.galvanized, 17.02, 12.48, z, 0.05, 0.98, 0.05);
+  DTube(g, detailMats.galvanized, 17.02, 12.98, -5.4, 17.02, 12.98, 5.4, 0.034);
+  DTube(g, detailMats.galvanized, 17.02, 12.52, -5.4, 17.02, 12.52, 5.4, 0.026);
+  for (const s of [-1, 1]) {
+    DTube(g, detailMats.galvanized, 7.2, 12.98, s * 6.02, 17.02, 12.98, s * 6.02, 0.034);
+    DTube(g, detailMats.galvanized, 7.2, 12.52, s * 6.02, 17.02, 12.52, s * 6.02, 0.026);
+  }
+  /* funnel access ladder on the aft face */
+  DTube(g, detailMats.steel, 0.76, 6.2, -0.38, 0.76, 13.65, -0.38, 0.045);
+  DTube(g, detailMats.steel, 0.76, 6.2, 0.38, 0.76, 13.65, 0.38, 0.045);
+  for (let y = 6.7; y < 13.6; y += 0.62) DBox(g, detailMats.steel, 0.76, y, 0, 0.05, 0.055, 0.76);
+
+  /* working-deck painted boundaries + danger ring around the towing drum */
+  for (const s of [-1, 1]) {
+    const line = DBox(g, detailMats.safety, -13.5, 2.925, s * 5.15, 23, 0.025, 0.24); line.castShadow = false;
+    const walk = DBox(g, detailMats.whitePaint, -13.0, 2.918, s * 1.25, 19, 0.02, 0.16); walk.castShadow = false;
+    walk.material = detailMats.safety;
+  }
+  {
+    const ring = new THREE.Mesh(new THREE.RingGeometry(2.30, 2.56, 42),
+      new THREE.MeshStandardMaterial({ color:0xc79a26, roughness:0.8, transparent:true, opacity:0.5, side:THREE.DoubleSide }));
+    ring.rotation.x = -Math.PI / 2; ring.position.set(-4.6, 2.925, 0); ring.receiveShadow = true; g.add(ring);
+  }
+  /* towing wire led aft over the A-frames to a stern roller */
+  DTube(g, detailMats.darkSteel, -3.4, 4.78, 0, -9.0, 5.18, 0, 0.065);
+  DTube(g, detailMats.darkSteel, -9.0, 5.18, 0, -15.0, 5.72, 0, 0.065);
+  DTube(g, detailMats.darkSteel, -15.0, 5.72, 0, -21.0, 4.95, 0, 0.065);
+  DTube(g, detailMats.darkSteel, -21.0, 4.95, 0, -25.35, 3.42, 0, 0.065);
+  DCyl(g, detailMats.darkSteel, -25.65, 3.0, 0, 0.55, 7.6, Math.PI / 2);
+  DCyl(g, detailMats.steel, -25.65, 3.0, -3.92, 0.82, 0.18, Math.PI / 2);
+  DCyl(g, detailMats.steel, -25.65, 3.0, 3.92, 0.82, 0.18, Math.PI / 2);
+  /* small deck crane: pedestal, machinery house, two-chord boom and hook */
+  DCyl(g, detailMats.wornGrey, -9.5, 4.05, -4.25, 0.48, 2.35);
+  DBox(g, detailMats.frame, -9.5, 5.62, -4.25, 1.5, 1.05, 1.3);
+  DTube(g, detailMats.safety, -9.5, 6.05, -4.25, -16.5, 9.25, -1.15, 0.16);
+  DTube(g, detailMats.darkSteel, -9.5, 5.45, -4.25, -16.5, 8.62, -1.15, 0.075);
+  for (const f of [0.34, 0.67]) {
+    const x1 = -9.5 + (-16.5 + 9.5) * f, y1 = 6.05 + (9.25 - 6.05) * f, z1 = -4.25 + (-1.15 + 4.25) * f;
+    const y2 = 5.45 + (8.62 - 5.45) * f;
+    DTube(g, detailMats.darkSteel, x1, y2, z1, x1, y1, z1, 0.04);
+  }
+  DTube(g, detailMats.darkSteel, -16.5, 9.25, -1.15, -16.5, 5.25, -1.15, 0.024);
+  DBox(g, detailMats.darkSteel, -16.5, 5.02, -1.15, 0.34, 0.44, 0.18);
+  /* fire cabinet, barrels, crate and a raised forecastle hatch */
+  DBox(g, detailMats.redCabinet, 6.10, 4.35, 5.30, 1.18, 1.48, 0.46);
+  DBox(g, detailMats.whitePaint, 6.10, 4.62, 5.55, 0.92, 0.16, 0.03);
+  DCyl(g, detailMats.seam, -18.0, 3.46, 4.05, 0.38, 1.06);
+  DCyl(g, detailMats.rust, -17.05, 3.46, 4.72, 0.38, 1.06);
+  DTorus(g, detailMats.darkSteel, -18.0, 3.82, 4.05, 0.39, 0.025, Math.PI / 2);
+  DTorus(g, detailMats.darkSteel, -17.05, 3.82, 4.72, 0.39, 0.025, Math.PI / 2);
+  DBox(g, detailMats.wood, -20.6, 3.48, -3.75, 2.1, 1.05, 1.45);
+  DBox(g, detailMats.darkSteel, -20.6, 4.04, -3.75, 2.16, 0.07, 0.22);
+  DBox(g, detailMats.darkSteel, 20.3, deckYAt(20.3) + 0.30, 0, 3.4, 0.58, 2.5);
+  DBox(g, detailMats.wornGrey, 20.3, deckYAt(20.3) + 0.68, 0, 2.8, 0.20, 1.9);
+  for (const s of [-1, 1]) {
+    DCyl(g, detailMats.whitePaint, 18.4, deckYAt(18.4) + 0.55, s * 3.25, 0.15, 1.1);
+    DSphere(g, detailMats.whitePaint, 18.4, deckYAt(18.4) + 1.22, s * 3.25, 0.42, 0.30, 0.42);
+  }
+  /* masthead anemometer + navigation-light glows */
+  DTube(g, detailMats.steel, 0.6, 20.15, 0, 0.6, 20.92, 0, 0.035);
+  DBox(g, detailMats.steel, 0.6, 20.58, 0, 0.07, 0.06, 1.15);
+  DSphere(g, detailMats.darkSteel, 0.6, 20.58, -0.55, 0.09, 0.09, 0.09);
+  DSphere(g, detailMats.darkSteel, 0.6, 20.58, 0.55, 0.09, 0.09, 0.09);
+  const glowTex = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const gg = c.getContext('2d'), gr = gg.createRadialGradient(32, 32, 2, 32, 32, 30);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    gg.fillStyle = gr; gg.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c);
+  })();
+  const addGlow = (x, y, z, color, scale) => {
+    const sm = new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: 0.62, depthWrite: false });
+    const sp = new THREE.Sprite(sm); sp.position.set(x, y, z); sp.scale.set(scale, scale, 1); g.add(sp);
+    const bulb = new THREE.Mesh(unitSphereGeo, new THREE.MeshBasicMaterial({ color }));
+    bulb.position.set(x, y, z); bulb.scale.set(0.09, 0.09, 0.09); g.add(bulb);
+  };
+  addGlow(0.6, 20.95, 0, 0xfff3c4, 2.0);
+  addGlow(12.0, 11.95, 6.35, 0xff3b30, 1.25);
+  addGlow(12.0, 11.95, -6.35, 0x2eff7a, 1.25);
+  addGlow(-26.6, 5.6, 0, 0xfff3c4, 1.1);
+  return g;
+}
+
 /* ============ ship (outer: position+yaw, inner: pitch/roll from waves) ============ */
 const ship = new THREE.Group();
 const tilt = new THREE.Group();
@@ -458,8 +978,11 @@ ship.add(tilt); scene.add(ship);
 let shipReady = false;
 new GLTFLoader().load('happy-hunter-blue.glb', (gltf) => {
   const model = gltf.scene;
-  model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; if (o.material) o.material.envMapIntensity = 0.7; } });
+  enhanceShipMaterials(model);
   tilt.add(model);
+  /* the hand-built detail overlay only fits the old procedural model — the
+     SolidWorks STL ship carries its own fittings, so it is skipped for it */
+  if (model.getObjectByName('SHIP_ROOT')) tilt.add(buildShipDetails());
   shipReady = true; window.__shipReady = true;
   document.getElementById('loading').classList.add('done');
   /* exhibition: the show starts by itself */
@@ -509,15 +1032,15 @@ function wakePlane(len, wid, op) {
   m.rotation.z = Math.PI; // texture x=0 (bright end) at the stern side
   return m;
 }
-const wakeC = wakePlane(64, 10, 0.95); wakeC.position.set(-26 - 32, 0.3, 0); ship.add(wakeC);
+const wakeC = wakePlane(64, 12, 0.95); wakeC.position.set(-26 - 32, 0.3, 0); ship.add(wakeC);
 const wakeL = wakePlane(52, 5.5, 0.8); wakeL.position.set(-26 - 21, 0.3, 8.5); wakeL.rotation.z = Math.PI - 0.30; ship.add(wakeL);
 const wakeR = wakePlane(52, 5.5, 0.8); wakeR.position.set(-26 - 21, 0.3, -8.5); wakeR.rotation.z = Math.PI + 0.30; ship.add(wakeR);
 
 /* bow foam wedges + foam strips along both hull sides at the waterline */
 const bowFoamL = wakePlane(15, 3.4, 0.85); bowFoamL.position.set(21.5, 0.3, 3.6); bowFoamL.rotation.z = Math.PI - 0.5; ship.add(bowFoamL);
 const bowFoamR = wakePlane(15, 3.4, 0.85); bowFoamR.position.set(21.5, 0.3, -3.6); bowFoamR.rotation.z = Math.PI + 0.5; ship.add(bowFoamR);
-const sideFoamL = wakePlane(38, 2.6, 0.55); sideFoamL.position.set(1, 0.28, 6.1); sideFoamL.rotation.z = Math.PI; ship.add(sideFoamL);
-const sideFoamR = wakePlane(38, 2.6, 0.55); sideFoamR.position.set(1, 0.28, -6.1); sideFoamR.rotation.z = Math.PI; ship.add(sideFoamR);
+const sideFoamL = wakePlane(38, 2.6, 0.55); sideFoamL.position.set(1, 0.28, 7.0); sideFoamL.rotation.z = Math.PI; ship.add(sideFoamL);
+const sideFoamR = wakePlane(38, 2.6, 0.55); sideFoamR.position.set(1, 0.28, -7.0); sideFoamR.rotation.z = Math.PI; ship.add(sideFoamR);
 
 /* stern wash: foam particles churned up by the propellers, drifting astern */
 const WASH_N = 240;
@@ -611,9 +1134,9 @@ let camMode = 'tongquan';
 function camDesired(t) {
   const h = headingDeg * Math.PI / 180;
   const fx = Math.sin(h), fz = Math.cos(h);
-  if (camMode === 'chase') return shipPos.clone().add(new THREE.Vector3(-fx * 66, 20, -fz * 66));
-  if (camMode === 'bow')   return shipPos.clone().add(new THREE.Vector3(fx * 56, 13, fz * 56));
-  if (camMode === 'top')   return shipPos.clone().add(new THREE.Vector3(0, 100, 0.01));
+  if (camMode === 'chase') return shipPos.clone().add(new THREE.Vector3(-fx * 50, 16, -fz * 50));
+  if (camMode === 'bow')   return shipPos.clone().add(new THREE.Vector3(fx * 43, 11, fz * 43));
+  if (camMode === 'top')   return shipPos.clone().add(new THREE.Vector3(0, 82, 0.01));
   if (camMode === 'tongquan') {
     const az = 2.45 + t * 0.021;
     return new THREE.Vector3(Math.sin(az) * 258, 122, Math.cos(az) * 258);
@@ -621,8 +1144,8 @@ function camDesired(t) {
   if (camMode === 'cine') {
     /* slow orbital drift around the moving ship — the ship visibly travels */
     const az = h + Math.PI + Math.sin(t * 0.055) * 0.85;
-    const r = 64 + Math.sin(t * 0.04) * 12;
-    const y = 17 + Math.sin(t * 0.047) * 6;
+    const r = 50 + Math.sin(t * 0.04) * 9;
+    const y = 15 + Math.sin(t * 0.047) * 5;
     return shipPos.clone().add(new THREE.Vector3(Math.sin(az) * r, y, Math.cos(az) * r));
   }
   return null; // orbit: free
@@ -860,6 +1383,8 @@ function animate() {
   ocean.geometry.computeVertexNormals();
 
   if (seaTex) { seaTex.offset.x = t * 0.006; seaTex.offset.y = t * 0.0021; }
+  if (seaNormalTex) { seaNormalTex.offset.x = t * 0.0035; seaNormalTex.offset.y = -t * 0.0017; }
+  if (radarBar) radarBar.rotation.y -= dt * 1.45;
   /* second vessel on its own ellipse, opposite hand */
   {
     const bs = t * 0.0075 + 2.1;
