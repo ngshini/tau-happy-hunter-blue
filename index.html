@@ -50,6 +50,10 @@
     width:21px; height:21px; border-radius:6px; border:1px solid; flex:0 0 auto; }
   #console .ic svg { width:14px; height:14px; }
   .chart { display:block; width:100%; height:64px; }
+  #console .cell.balanceCell { flex:0 0 230px; padding:8px 6px 6px; }
+  #balCanvas { display:block; width:100%; height:92px; }
+  .balFt { font-size:9.5px; letter-spacing:-.01em; color:#9fc6d8; text-align:center; margin-top:3px; white-space:nowrap; }
+  .balFt b { color:#eaf7ff; font-size:11.5px; }
   #compass { display:block; width:118px; height:118px; margin:0 auto; }
   #vignette { position:fixed; inset:0; z-index:4; pointer-events:none;
     background:radial-gradient(ellipse at 50% 42%, transparent 52%, rgba(3,18,36,.42) 100%); }
@@ -122,6 +126,11 @@
   <div class="cell" style="--ac:#3dff8e">
     <div class="hd"><span class="tt"><span class="ic" style="color:#3dff8e;background:#3dff8e22;border-color:#3dff8e55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h9.5a2.8 2.8 0 1 0-2.8-2.8"/><path d="M2 12h14.5a2.8 2.8 0 1 1-2.8 2.8"/><path d="M3 16.5h6"/></svg></span>WIND · kn</span><b id="cWindV">--</b></div>
     <canvas class="chart" id="cWind" width="528" height="132"></canvas>
+  </div>
+  <div class="cell balanceCell" style="--ac:#37e6ec">
+    <div class="hd"><span class="tt"><span class="ic" style="color:#37e6ec;background:#37e6ec22;border-color:#37e6ec55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 7l7-4 7 4"/><path d="M3 13l2-6 2 6a3.5 3.5 0 0 1-4 0z"/><path d="M17 13l2-6 2 6a3.5 3.5 0 0 1-4 0z"/><path d="M8 21h8"/></svg></span>SHIP BALANCE</span><span style="letter-spacing:.06em;color:#8fb8c9">WIREFRAME 3D</span></div>
+    <canvas id="balCanvas" width="460" height="184"></canvas>
+    <div class="balFt">Nghiêng mạn: <b id="balHeel">0.0°</b> · Trạng thái: <b id="balStatus" style="color:#3dff8e">Standard</b></div>
   </div>
   <div class="cell compassCell">
     <div class="hd"><span class="tt"><span class="ic" style="color:#6fd3ff;background:#6fd3ff22;border-color:#6fd3ff55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8z" fill="currentColor" stroke="none"/></svg></span>COMPASS</span></div>
@@ -1094,6 +1103,81 @@ function respawnSpray(i) {
   sprayVel[i].set(-(1.5 + Math.random() * 2.5), 2.2 + Math.random() * 2.4, s * (1.6 + Math.random() * 2.0));
 }
 
+
+/* ============ SHIP BALANCE: live wireframe attitude indicator ============ */
+let balOK = false, balRenderer, balScene, balCam, balShip, balLineMat;
+let balHeelTxt = '', balStatusTxt = '';
+try {
+  balRenderer = new THREE.WebGLRenderer({ canvas: document.getElementById('balCanvas'), antialias: true, alpha: true });
+  balRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  balRenderer.setSize(230, 92, false);
+  balScene = new THREE.Scene();
+  balCam = new THREE.PerspectiveCamera(36, 230 / 92, 0.1, 80);
+  balCam.position.set(5.4, 3.1, 6.1);
+  balCam.lookAt(0, 0.55, 0);
+  balLineMat = new THREE.LineBasicMaterial({ color: 0x3fe8ef, transparent: true, opacity: 0.95 });
+  const balFillMat = new THREE.MeshBasicMaterial({ color: 0x0d4653, transparent: true, opacity: 0.16, depthWrite: false });
+  const balRingMat = new THREE.LineBasicMaterial({ color: 0x2bb7c4, transparent: true, opacity: 0.45 });
+  const balRingMat2 = new THREE.LineBasicMaterial({ color: 0x2bb7c4, transparent: true, opacity: 0.22 });
+  const balTickMat = new THREE.LineBasicMaterial({ color: 0x37dbe2, transparent: true, opacity: 0.85 });
+  function wf(geo, x, y, z, rx = 0, ry = 0, rz = 0) {
+    const grp = new THREE.Group();
+    grp.add(new THREE.Mesh(geo, balFillMat));
+    grp.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 24), balLineMat));
+    grp.position.set(x, y, z); grp.rotation.set(rx, ry, rz);
+    return grp;
+  }
+  balShip = new THREE.Group();
+  {
+    const sh = new THREE.Shape();
+    sh.moveTo(-2.35, -0.55); sh.lineTo(1.55, -0.55); sh.lineTo(2.45, 0.02);
+    sh.lineTo(2.05, 0.42); sh.lineTo(-2.35, 0.42); sh.closePath();
+    const hg = new THREE.ExtrudeGeometry(sh, { depth: 1.35, bevelEnabled: false });
+    hg.translate(0, 0, -0.675);
+    balShip.add(wf(hg, 0, 0, 0));
+  }
+  balShip.add(wf(new THREE.BoxGeometry(4.30, 0.16, 1.44), -0.12, 0.50, 0));
+  balShip.add(wf(new THREE.BoxGeometry(1.55, 0.75, 1.08), 0.62, 0.95, 0));
+  balShip.add(wf(new THREE.BoxGeometry(1.30, 0.62, 1.24), 0.66, 1.62, 0));
+  balShip.add(wf(new THREE.BoxGeometry(1.46, 0.10, 1.36), 0.66, 1.97, 0));
+  balShip.add(wf(new THREE.BoxGeometry(0.60, 1.15, 0.66), -0.72, 1.28, 0));
+  balShip.add(wf(new THREE.CylinderGeometry(0.035, 0.045, 1.45, 6), -0.12, 2.55, 0));
+  balShip.add(wf(new THREE.BoxGeometry(0.05, 0.05, 0.95), -0.12, 3.05, 0));
+  balShip.add(wf(new THREE.CylinderGeometry(0.03, 0.04, 1.15, 6), 1.95, 1.05, 0, 0, 0, -0.16));
+  balShip.add(wf(new THREE.BoxGeometry(0.09, 1.05, 0.09), -2.02, 0.95, 0.44, 0.42, 0, 0));
+  balShip.add(wf(new THREE.BoxGeometry(0.09, 1.05, 0.09), -2.02, 0.95, -0.44, -0.42, 0, 0));
+  balShip.add(wf(new THREE.BoxGeometry(0.09, 0.09, 0.98), -2.02, 1.44, 0));
+  balScene.add(balShip);
+  /* clinometer: flat tick ring on the water plane + roll arc over the ship */
+  function circleLine(r, mat) {
+    const pts = [];
+    for (let i = 0; i <= 72; i++) { const a = i / 72 * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r)); }
+    return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+  }
+  balScene.add(circleLine(2.78, balRingMat));
+  balScene.add(circleLine(2.44, balRingMat2));
+  {
+    const tp = [];
+    for (let i = 0; i < 24; i++) {
+      const a = i / 24 * Math.PI * 2, r0 = 2.98, r1 = i % 6 === 0 ? 3.36 : 3.17;
+      tp.push(new THREE.Vector3(Math.cos(a) * r0, 0, Math.sin(a) * r0), new THREE.Vector3(Math.cos(a) * r1, 0, Math.sin(a) * r1));
+    }
+    balScene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(tp), balTickMat));
+    const arc = [], arcT = [], R = 2.55, cy = 0.45;
+    for (let d = -60; d <= 60; d += 3) {
+      const a = d * Math.PI / 180;
+      arc.push(new THREE.Vector3(0, cy + Math.cos(a) * R, Math.sin(a) * R));
+      if (d % 15 === 0) {
+        arcT.push(new THREE.Vector3(0, cy + Math.cos(a) * (R - 0.20), Math.sin(a) * (R - 0.20)),
+                  new THREE.Vector3(0, cy + Math.cos(a) * (R + 0.20), Math.sin(a) * (R + 0.20)));
+      }
+    }
+    balScene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(arc), balRingMat));
+    balScene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(arcT), balTickMat));
+  }
+  balOK = true;
+} catch (e) { console.warn('balance widget disabled', e); }
+
 /* ============ navigation simulation ============ */
 const LAT0 = 20.8650, LON0 = 106.6840, M_PER_UNIT = 15;
 let u = 0, sailing = true, headingDeg = 0, sogKn = 0, windNow = 13, foamFade = 0;
@@ -1361,6 +1445,16 @@ function updateHud(t) {
   el('cDepthV').textContent = s.depth.toFixed(1);
   el('cXteV').textContent = (xteNow >= 0 ? '+' : '') + xteNow.toFixed(0);
   el('cWindV').textContent = s.wind.toFixed(0);
+  /* ship balance: live heel read straight from the wave-driven tilt */
+  const heelDeg = Math.abs(THREE.MathUtils.radToDeg(tilt.rotation.x));
+  const hTxt = heelDeg.toFixed(1) + '°';
+  if (hTxt !== balHeelTxt) { balHeelTxt = hTxt; el('balHeel').textContent = hTxt; }
+  const balSt = heelDeg <= 3 ? ['Standard', '#3dff8e'] : heelDeg <= 6 ? ['Nghiêng nhẹ', '#ffd94d'] : ['Cảnh báo', '#ff7a6b'];
+  if (balSt[0] !== balStatusTxt) {
+    balStatusTxt = balSt[0];
+    const bsEl = el('balStatus'); bsEl.textContent = balSt[0]; bsEl.style.color = balSt[1];
+    if (balLineMat) balLineMat.color.set(heelDeg <= 3 ? 0x3fe8ef : heelDeg <= 6 ? 0xffd94d : 0xff8a70);
+  }
   sogKn = s.sog; windNow = s.wind; stwNow = s.stw;
   window.__sog = s.sog; window.__hdg = headingDeg; window.__trail = trailPts.length;
   drawCompass(s.windDir);
@@ -1532,6 +1626,12 @@ function animate() {
     }
   }
   controls.update();
+  if (balOK) {
+    balShip.rotation.x = tilt.rotation.x * 1.35;
+    balShip.rotation.z = tilt.rotation.z * 1.35;
+    balShip.position.y = Math.sin(t * 0.85) * 0.045;
+    balRenderer.render(balScene, balCam);
+  }
   renderer.render(scene, camera);
 }
 animate();
