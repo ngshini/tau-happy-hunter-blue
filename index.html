@@ -43,10 +43,14 @@
   #minimap { display:block; width:224px; height:224px; }
   /* charts, bottom-left */
   #console { left:14px; right:auto; bottom:14px; padding:12px 14px 10px;
-    display:flex; gap:10px; align-items:stretch; }
-  #console .cell { flex:0 0 268px; min-width:0; background:rgba(3,16,30,.38); border:1px solid rgba(96,190,255,.16);
+    display:flex; gap:10px; align-items:stretch;
+    /* transparent chart block (Sinh): the graphs float straight on the sea —
+       no panel fill, border, blur or shadow; cells keep only hairlines */
+    background:transparent; border-color:transparent; box-shadow:none;
+    backdrop-filter:none; -webkit-backdrop-filter:none; }
+  #console .cell { flex:0 0 268px; min-width:0; background:transparent; border:1px solid rgba(96,190,255,.16);
     border-radius:9px; padding:8px 10px 6px; }
-  #console .cell.compassCell { background:rgba(3,16,30,.38); }
+  #console .cell.compassCell { background:transparent; }
   #console .dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin:0 4px 1px 0; }
   #console .cell.compassCell { flex:0 0 128px; text-align:center; }
   #console .hd { font-size:9px; letter-spacing:.1em; color:#6fd3ff; display:flex; justify-content:space-between; margin-bottom:4px; white-space:nowrap; }
@@ -1457,7 +1461,8 @@ const chRot = makeChart('cRot', ['#e08fff']);
 function drawChart(ch, min, max, opts = {}) {
   const { ctx } = ch, W = 840, H = 132;
   ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = 'rgba(4,24,44,0.55)'; ctx.fillRect(0, 0, W, H);
+  /* no plot-area fill: the chart background is fully transparent (Sinh) —
+     only grid lines, labels and the data lines are drawn, over the sea */
   ctx.strokeStyle = 'rgba(96,190,255,0.18)'; ctx.lineWidth = 1;
   for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(0, H * i / 4); ctx.lineTo(W, H * i / 4); ctx.stroke(); }
   for (let i = 1; i < 6; i++) { ctx.beginPath(); ctx.moveTo(W * i / 6, 0); ctx.lineTo(W * i / 6, H); ctx.stroke(); }
