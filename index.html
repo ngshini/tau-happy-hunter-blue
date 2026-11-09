@@ -50,13 +50,6 @@
     width:21px; height:21px; border-radius:6px; border:1px solid; flex:0 0 auto; }
   #console .ic svg { width:14px; height:14px; }
   .chart { display:block; width:100%; height:64px; }
-  #espCell { flex:0 0 252px; }
-  #espState { font-size:14.5px; font-weight:700; letter-spacing:.03em; color:#ffb04d; margin:8px 0 6px; display:flex; align-items:center; gap:8px; white-space:nowrap; }
-  #espDot { width:10px; height:10px; border-radius:50%; background:#ffb04d; flex:0 0 auto; }
-  #espDot.on { background:#3dff8e; animation:espPulse 1.6s ease-in-out infinite; }
-  @keyframes espPulse { 0%,100% { box-shadow:0 0 0 0 rgba(61,255,142,.45); } 50% { box-shadow:0 0 0 6px rgba(61,255,142,0); } }
-  #espMeta, #espXy { font-size:11px; color:#9fc6d8; line-height:1.6; font-family:monospace; white-space:nowrap; }
-  #espXy b { color:#eaf7ff; }
   #balanceBox { padding:10px 12px 9px; }
   #balanceBox .hd { font-size:10px; letter-spacing:.18em; color:#6fd3ff; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; }
   #balanceBox .ic { display:inline-flex; align-items:center; justify-content:center; width:21px; height:21px; border-radius:6px; border:1px solid #37e6ec55; background:#37e6ec22; color:#37e6ec; margin-right:6px; }
@@ -119,12 +112,6 @@
 </div>
 
 <div class="hud" id="console">
-  <div class="cell" id="espCell" style="--ac:#3dff8e">
-    <div class="hd"><span class="tt"><span class="ic" style="color:#3dff8e;background:#3dff8e22;border-color:#3dff8e55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 11v9"/><circle cx="12" cy="11" r="1.6" fill="currentColor" stroke="none"/><path d="M8.5 7.5a5 5 0 0 1 7 0"/><path d="M5.8 4.8a9 9 0 0 1 12.4 0"/></svg></span>ESP32 · DP_SHIP_001</span></div>
-    <div id="espState"><span id="espDot"></span><span id="espStateTx">CHỜ DỮ LIỆU…</span></div>
-    <div id="espMeta">Topic: bas/DP_SHIP_001/telemetry</div>
-    <div id="espXy">X <b>--</b> · Y <b>--</b></div>
-  </div>
   <div class="cell" style="--ac:#ffd94d">
     <div class="hd"><span class="tt"><span class="ic" style="color:#ffd94d;background:#ffd94d22;border-color:#ffd94d55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8z" fill="currentColor" stroke="none"/></svg></span>HDG <i class="dot" style="background:#ffd94d"></i> COG <i class="dot" style="background:#3dff8e"></i> · °</span><b id="cHdgV">--</b></div>
     <canvas class="chart" id="cHdg" width="840" height="132"></canvas>
@@ -1193,7 +1180,7 @@ try {
    simulation quietly takes over again so the stand never goes blank. */
 const LIVE = { on: false, x: 0, y: 0, hdg: 0, rot: 0, cog: 0, sogKn: 0,
                lastMsgPerf: -1e12, prevHdg: null, hist: [],
-               sx: 0, sz: 0, init: false, modeShown: '' };
+               sx: 0, sz: 0, vx: 0, vy: 0, shdg: 0, init: false, modeShown: '' };
 window.__live = LIVE;
 try {
   const qs = new URLSearchParams(location.search);
@@ -1229,11 +1216,14 @@ try {
         const dist = Math.hypot(d.x - h0.x, d.y - h0.y);
         LIVE.sogKn += (THREE.MathUtils.clamp(dist / span * 1.944, 0, 8) - LIVE.sogKn) * 0.35;
         if (dist > 0.05) LIVE.cog = (Math.atan2(d.x - h0.x, d.y - h0.y) * 180 / Math.PI + 360) % 360;
+        /* tank-frame velocity (m/s), smoothed — the render loop extrapolates
+           the newest fix by it between 1 Hz packets (dead reckoning) */
+        LIVE.vx += (THREE.MathUtils.clamp((d.x - h0.x) / span, -1.5, 1.5) - LIVE.vx) * 0.35;
+        LIVE.vy += (THREE.MathUtils.clamp((d.y - h0.y) / span, -1.5, 1.5) - LIVE.vy) * 0.35;
       }
       LIVE.x = d.x; LIVE.y = d.y; LIVE.hdg = hdg;
       LIVE.prevHdg = hdg;
       LIVE.lastMsgPerf = performance.now();
-      LIVE.msgs = (LIVE.msgs || 0) + 1;
     } catch (e) { /* ignore malformed packets */ }
   });
 } catch (e) { console.warn('MQTT live feed unavailable', e); }
@@ -1513,25 +1503,6 @@ function updateHud(t) {
     el('tLon').textContent = LIVE.y.toFixed(2) + ' m';
     el('tRng').innerHTML = Math.hypot(LIVE.x, LIVE.y).toFixed(2) + '<em>m · GỐC</em>';
   }
-  /* ESP32 status cell: at-a-glance proof of the live feed (state, packet
-     count, data age, current X/Y) — green and pulsing while packets arrive,
-     amber while waiting or after the feed drops and simulation takes over */
-  {
-    const ageS = LIVE.msgs ? Math.max(0, (performance.now() - LIVE.lastMsgPerf) / 1000) : null;
-    if (LIVE.on) {
-      el('espStateTx').textContent = 'ĐANG NHẬN DỮ LIỆU';
-      el('espState').style.color = '#3dff8e';
-      el('espDot').className = 'on';
-      el('espMeta').textContent = 'Đã nhận ' + LIVE.msgs + ' gói · gói mới ' + ageS.toFixed(0) + 's trước';
-      el('espXy').innerHTML = 'X <b>' + LIVE.x.toFixed(2) + ' m</b> · Y <b>' + LIVE.y.toFixed(2) + ' m</b>';
-    } else {
-      el('espStateTx').textContent = LIVE.msgs ? 'MẤT KẾT NỐI — MÔ PHỎNG' : 'CHỜ DỮ LIỆU TỪ ESP32';
-      el('espState').style.color = '#ffb04d';
-      el('espDot').className = '';
-      el('espMeta').textContent = LIVE.msgs ? ('Đã nhận ' + LIVE.msgs + ' gói · mất tín hiệu ' + ageS.toFixed(0) + 's') : 'Topic: bas/DP_SHIP_001/telemetry';
-      el('espXy').innerHTML = 'X <b>--</b> · Y <b>--</b>';
-    }
-  }
   el('cHdgV').textContent = headingDeg.toFixed(0) + ' / ' + cogDeg.toFixed(0);
   el('cRotV').textContent = (rotNow >= 0 ? '+' : '') + rotNow.toFixed(0);
   /* ship balance: live heel read straight from the wave-driven tilt */
@@ -1626,12 +1597,34 @@ function animate() {
        1 m = 10 units around the basin centre, smoothed toward the target. */
     LIVE.on = (performance.now() - LIVE.lastMsgPerf) / 1000 < 6;
     if (LIVE.on) {
-      const wx = THREE.MathUtils.clamp(LIVE.x * 10, -58, 58);
-      const wz = THREE.MathUtils.clamp(-LIVE.y * 10, -58, 58);
-      if (!LIVE.init) { LIVE.sx = wx; LIVE.sz = wz; LIVE.init = true; }
-      LIVE.sx += (wx - LIVE.sx) * 0.07; LIVE.sz += (wz - LIVE.sz) * 0.07;
+      /* Dead reckoning for smoothness: packets arrive at ~1 Hz, so chasing
+         them raw makes the model step once a second. Instead the ship glides
+         toward where the model should be NOW — the newest fix extrapolated
+         by its measured velocity over the packet's age — under
+         frame-rate-independent damping; heading follows along the shortest
+         arc with the same damping, so the bow sweeps instead of snapping. */
+      const nowMs = performance.now();
+      const age = Math.min((nowMs - LIVE.lastMsgPerf) / 1000, 1.5);
+      const tx = THREE.MathUtils.clamp((LIVE.x + LIVE.vx * age) * 10, -58, 58);
+      const tz = THREE.MathUtils.clamp(-(LIVE.y + LIVE.vy * age) * 10, -58, 58);
+      if (!LIVE.init) {
+        LIVE.sx = THREE.MathUtils.clamp(LIVE.x * 10, -58, 58);
+        LIVE.sz = THREE.MathUtils.clamp(-LIVE.y * 10, -58, 58);
+        LIVE.shdg = headingDeg;
+        LIVE.lastFrameMs = nowMs;
+        LIVE.init = true;
+      }
+      /* the damping runs on wall-clock time, not the simulation's dt (which
+         is clamped to 50 ms): on a slow display the glide must still track
+         the real model instead of lagging seconds behind it */
+      const dtL = Math.min((nowMs - LIVE.lastFrameMs) / 1000, 0.25);
+      LIVE.lastFrameMs = nowMs;
+      const kp = 1 - Math.exp(-dtL * 3.0);
+      LIVE.sx += (tx - LIVE.sx) * kp; LIVE.sz += (tz - LIVE.sz) * kp;
+      const dhS = ((LIVE.hdg - LIVE.shdg + 540) % 360) - 180;
+      LIVE.shdg = (LIVE.shdg + dhS * (1 - Math.exp(-dtL * 3.2)) + 360) % 360;
       shipPos.set(LIVE.sx, 0, LIVE.sz);
-      headingDeg = LIVE.hdg;
+      headingDeg = LIVE.shdg;
       cogDeg = LIVE.cog;
       rotNow = LIVE.rot;
       xteNow = 0;
