@@ -61,6 +61,33 @@
     width:21px; height:21px; border-radius:6px; border:1px solid; flex:0 0 auto; }
   #console .ic svg { width:14px; height:14px; }
   .chart { display:block; width:100%; height:64px; }
+  /* controls, bottom-centre — restored: this whole block was accidentally
+     deleted in fcfea42 (title-lockup removal), leaving the view-settings
+     button unstyled and buried under the canvas; offsets raised slightly
+     (186->210, 238->262) to clear today's taller compact console */
+  #btnMenu { position:fixed; z-index:11; left:50%; bottom:210px; transform:translateX(-50%);
+    font:inherit; font-size:11.5px; letter-spacing:.1em; cursor:pointer; color:#eaf7ff;
+    background:linear-gradient(160deg, rgba(7,34,60,.88), rgba(4,20,38,.85));
+    border:1px solid rgba(111,211,255,.55); border-top:2px solid rgba(111,211,255,.7);
+    border-radius:999px; padding:10px 22px; backdrop-filter:blur(10px);
+    box-shadow:0 10px 30px rgba(0,10,25,.5); transition:all .18s; }
+  #btnMenu:hover { border-color:#6fd3ff; box-shadow:0 10px 34px rgba(20,120,200,.45); }
+  #controls { left:50%; margin-left:-176px; bottom:262px; width:352px; padding:14px 16px 12px;
+    animation:pop .18s ease-out; }
+  @keyframes pop { from { opacity:0; transform:translateY(8px) scale(.97); } to { opacity:1; transform:none; } }
+  #controls .popHd { display:flex; justify-content:space-between; align-items:center;
+    font-size:10.5px; letter-spacing:.22em; color:#6fd3ff;
+    border-bottom:1px solid rgba(96,190,255,.25); padding-bottom:9px; margin-bottom:10px; }
+  #controls .popSec { font-size:9.5px; letter-spacing:.24em; color:#7fa8c9; margin:8px 0 7px; }
+  #controls .popGrid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; }
+  #controls button { font:inherit; font-size:10.5px; letter-spacing:.04em; cursor:pointer;
+    color:#cfeaff; background:rgba(10,44,74,.65); border:1px solid rgba(96,190,255,.35);
+    border-radius:9px; padding:9px 4px; transition:all .15s; }
+  #controls button:hover { border-color:#6fd3ff; color:#fff; }
+  #controls button.on { background:#0e5f9e; border-color:#6fd3ff; color:#fff; }
+  #controls #btnClosePop { border:none; background:none; color:#7fa8c9; font-size:14px;
+    padding:2px 6px; cursor:pointer; }
+  #controls #btnClosePop:hover { color:#fff; }
   #balanceBox { padding:10px 12px 9px; }
   #balanceBox .hd { font-size:10px; letter-spacing:.18em; color:#6fd3ff; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; }
   #balanceBox .ic { display:inline-flex; align-items:center; justify-content:center; width:21px; height:21px; border-radius:6px; border:1px solid #37e6ec55; background:#37e6ec22; color:#37e6ec; margin-right:6px; }
