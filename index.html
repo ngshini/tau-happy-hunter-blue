@@ -88,6 +88,31 @@
   #controls #btnClosePop { border:none; background:none; color:#7fa8c9; font-size:14px;
     padding:2px 6px; cursor:pointer; }
   #controls #btnClosePop:hover { color:#fff; }
+  /* DC motor control section (inside #controls): throttle slider + quick
+     buttons, publishes to the ESP32 over the same MQTT client as the feed */
+  #controls .motorSlider { -webkit-appearance:none; appearance:none; display:block; width:100%;
+    height:24px; margin:0; background:transparent; cursor:pointer; }
+  #controls .motorSlider::-webkit-slider-runnable-track { height:6px; border-radius:3px;
+    background:rgba(96,190,255,.28); border:1px solid rgba(96,190,255,.35); }
+  #controls .motorSlider::-webkit-slider-thumb { -webkit-appearance:none; appearance:none;
+    width:18px; height:18px; margin-top:-7px; border-radius:50%;
+    background:#38bdf8; border:2px solid #6fd3ff; box-shadow:0 2px 10px rgba(20,120,200,.55); }
+  #controls .motorSlider::-moz-range-track { height:6px; border-radius:3px;
+    background:rgba(96,190,255,.28); border:1px solid rgba(96,190,255,.35); }
+  #controls .motorSlider::-moz-range-thumb { width:15px; height:15px; border-radius:50%;
+    background:#38bdf8; border:2px solid #6fd3ff; box-shadow:0 2px 10px rgba(20,120,200,.55); }
+  #controls .motorTicks { display:flex; justify-content:space-between;
+    font-size:9.5px; letter-spacing:.08em; color:#7fa8c9; margin:1px 1px 0; }
+  #controls .motorRead { display:flex; justify-content:space-between; align-items:baseline;
+    margin:7px 0 9px; }
+  #controls .motorRead b { font-size:19px; font-weight:700; color:#eaf7ff; }
+  #controls .motorDir { font-size:11px; letter-spacing:.18em; font-weight:700; }
+  #controls .motorDir.fwd { color:#3dff8e; }
+  #controls .motorDir.rev { color:#ff9d5c; }
+  #controls .motorDir.stop { color:#7fa8c9; }
+  #controls .motorFb { margin-top:9px; font-size:10.5px; color:#7fa8c9; letter-spacing:.05em; }
+  #controls .motorFb b { color:#eaf7ff; }
+  #controls .motorHint { margin-top:6px; font-size:10.5px; color:#ffb04d; letter-spacing:.05em; }
   /* history button in the header (right side, mirrors #btnMenu on the left) */
   #btnHistory { position:absolute; z-index:21; right:14px; top:50%; transform:translateY(-50%);
     font:inherit; font-size:11.5px; letter-spacing:.1em; cursor:pointer; color:#eaf7ff;
@@ -232,6 +257,19 @@
     <button id="btnDirector">▶ TRÌNH DIỄN</button>
     <button id="btnFull">⛶ FULL</button>
     <button id="btnSail" class="on">⏸ DỪNG CHẠY</button>
+  </div>
+  <div class="popSec">ĐỘNG CƠ DC</div>
+  <div class="motorBox">
+    <input type="range" class="motorSlider" id="motorSlider" min="-100" max="100" step="1" value="0">
+    <div class="motorTicks"><span>−100</span><span>0</span><span>+100</span></div>
+    <div class="motorRead"><b id="motorVal">0%</b><span class="motorDir stop" id="motorDir">DỪNG</span></div>
+    <div class="popGrid">
+      <button id="btnMotorRev">◀ LÙI 50</button>
+      <button id="btnMotorStop">⏹ DỪNG</button>
+      <button id="btnMotorFwd">TIẾN 50 ▶</button>
+    </div>
+    <div class="motorFb" id="motorFb" style="display:none">ESP32 đang chạy: <b id="motorFbVal">0%</b></div>
+    <div class="motorHint" id="motorHint" style="display:none">chưa kết nối MQTT</div>
   </div>
 </div>
 
@@ -1474,6 +1512,86 @@ btnSail.addEventListener('click', () => {
   btnSail.textContent = sailing ? '⏸ DỪNG CHẠY' : '▶ CHẠY TIẾP';
   btnSail.classList.toggle('on', sailing);
 });
+
+/* ============ DC MOTOR control -> ESP32 (MQTT cmd topic) ============
+   The throttle in the controls popup publishes {"motor": -100..100} to
+   bas/DP_SHIP_001/cmd through the SAME mqtt client as the live feed
+   (window.__mq from the LIVE block — no second connection). Positive =
+   TIEN (forward), negative = LUI (reverse), 0 = DUNG (stop). The board
+   reports the speed it actually applied back in its telemetry payload
+   ("motor" field) — shown as a read-only feedback line; incoming
+   telemetry never moves the slider, so it can't fight the user's hand.
+   With the ESP32 offline the controls still render and behave the same;
+   publishes simply go nowhere (mqtt.js queues / drops them silently). */
+try {
+  const motorSlider = document.getElementById('motorSlider');
+  const motorVal = document.getElementById('motorVal');
+  const motorDir = document.getElementById('motorDir');
+  const motorFb = document.getElementById('motorFb');
+  const motorFbVal = document.getElementById('motorFbVal');
+  const motorHint = document.getElementById('motorHint');
+  const qsMotor = new URLSearchParams(location.search);
+  const teleTopicM = qsMotor.get('topic') || 'bas/DP_SHIP_001/telemetry';
+  const cmdTopic = qsMotor.get('cmd') ||
+    (teleTopicM.endsWith('/telemetry')
+      ? teleTopicM.slice(0, -'/telemetry'.length) + '/cmd'
+      : 'bas/DP_SHIP_001/cmd');
+  window.__cmdTopic = cmdTopic;
+  let motorTimer = null;
+
+  function motorReadout(v) {
+    motorVal.textContent = (v > 0 ? '+' + v : String(v)) + '%';
+    motorDir.textContent = v > 0 ? 'TIẾN' : (v < 0 ? 'LÙI' : 'DỪNG');
+    motorDir.className = 'motorDir ' + (v > 0 ? 'fwd' : (v < 0 ? 'rev' : 'stop'));
+  }
+  function publishMotor(v) {
+    const mq = window.__mq;
+    if (mq && typeof mq.publish === 'function') {
+      try { mq.publish(cmdTopic, JSON.stringify({ motor: v })); } catch (e) { /* offline queue */ }
+      motorHint.style.display = mq.connected ? 'none' : 'block';
+    } else {
+      motorHint.style.display = 'block';
+    }
+  }
+  function motorPublishSoon(v) {
+    clearTimeout(motorTimer);
+    motorTimer = setTimeout(() => publishMotor(v), 120);
+  }
+  function motorSet(v, now) {
+    v = Math.max(-100, Math.min(100, Math.round(v)));
+    motorSlider.value = v;
+    motorReadout(v);
+    if (now) { clearTimeout(motorTimer); publishMotor(v); }
+    else motorPublishSoon(v);
+  }
+  motorSlider.addEventListener('input', () => {
+    const v = +motorSlider.value;
+    motorReadout(v);
+    motorPublishSoon(v);
+  });
+  motorSlider.addEventListener('change', () => {
+    clearTimeout(motorTimer);
+    publishMotor(+motorSlider.value);
+  });
+  document.getElementById('btnMotorStop').addEventListener('click', () => motorSet(0, true));
+  document.getElementById('btnMotorRev').addEventListener('click', () => motorSet(-50, true));
+  document.getElementById('btnMotorFwd').addEventListener('click', () => motorSet(50, true));
+  motorReadout(0);
+  const mqMotor = window.__mq;
+  if (mqMotor && typeof mqMotor.on === 'function') {
+    mqMotor.on('connect', () => { motorHint.style.display = 'none'; });
+    mqMotor.on('message', (topic, payload) => {
+      try {
+        const d = JSON.parse(new TextDecoder().decode(payload));
+        if (typeof d.motor === 'number') {
+          motorFbVal.textContent = d.motor + '%';
+          motorFb.style.display = 'block';
+        }
+      } catch (e) { /* ignore malformed packets */ }
+    });
+  }
+  window.__motorSet = motorSet;
+} catch (e) { console.warn('motor control disabled', e); }
 
 /* ============ history drawer: logged sensor data (home server, Tailscale-only) ============ */
 const h$ = id => document.getElementById(id);
