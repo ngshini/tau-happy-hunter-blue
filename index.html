@@ -253,11 +253,6 @@
     <div class="hd"><span class="tt"><span class="ic" style="color:#3dff8e;background:#3dff8e22;border-color:#3dff8e55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1"/></svg></span>MOTOR · %</span><b id="cMotorV">--</b></div>
     <canvas class="chart" id="cMotor" width="840" height="132"></canvas>
   </div>
-  <div class="cell scanCell" style="--ac:#38bdf8">
-    <div class="hd"><span class="tt"><span class="ic" style="color:#38bdf8;background:#38bdf822;border-color:#38bdf855"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M12 12L18.5 5.5"/><path d="M19.9 12a7.9 7.9 0 1 1-2.3-5.6" stroke-dasharray="2.5 2.2"/></svg></span>LIDAR · QUÉT 360°</span><b id="cLidarV">--</b></div>
-    <canvas class="scanCanvas" id="lidarScan"></canvas>
-    <div class="scanFt" id="lidarFt">Đang chờ dữ liệu lidar…</div>
-  </div>
   <div class="cell compassCell">
     <div class="hd"><span class="tt"><span class="ic" style="color:#6fd3ff;background:#6fd3ff22;border-color:#6fd3ff55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8z" fill="currentColor" stroke="none"/></svg></span>COMPASS</span></div>
     <canvas id="compass" width="316" height="316"></canvas>
@@ -1929,30 +1924,13 @@ function fetchHistScan() {
     .then(() => { hist.scanFetching = false; if (hist.tab === 'lidar') renderHistScan(); });
 }
 
-/* ---- live lidar panel + live motor value (own guarded block: a failure
-        here must never break the page) ---- */
-const scanLive = { ranges: null, lastAt: 0, wallAt: 0, stale: false };
-const scanLiveSt = { scale: 0, dim: false };
-function drawLiveScan() {
-  const cv = document.getElementById('lidarScan'); if (!cv) return;
-  scanLiveSt.dim = scanLive.stale;
-  const res = drawPolar(cv, scanLive.ranges, scanLiveSt, 'Đang chờ dữ liệu lidar…');
-  if (!res || !scanLive.ranges) return;
-  const hv = document.getElementById('cLidarV');
-  if (hv) hv.textContent = '≤ ' + res.scale + ' m';
-  const ft = document.getElementById('lidarFt');
-  if (ft) ft.textContent = res.count + ' điểm · gần nhất ' + (res.nearest == null ? '—' : res.nearest + ' mm') +
-    ' · cập nhật ' + new Date(scanLive.wallAt).toLocaleTimeString('vi-VN') +
-    (scanLive.stale ? ' (mất tín hiệu)' : '');
-}
+/* ---- live lidar feed -> shared state for the minimap inset overlay, plus
+        the live motor value (own guarded block: a failure here must never
+        break the page). The standalone QUÉT 360° console panel was removed
+        (Sinh): the scan now rides on the TRACK·MINIMAP as an inset around
+        the ship symbol — see the overlay inside drawMinimap. ---- */
+const scanLive = { scaleM: 0 };
 try {
-  drawLiveScan();
-  addEventListener('resize', () => { if (scanLive.ranges) drawLiveScan(); });
-  setInterval(() => {
-    if (!scanLive.ranges) return;
-    const stale = performance.now() - scanLive.lastAt > 10000;
-    if (stale !== scanLive.stale) { scanLive.stale = stale; drawLiveScan(); }
-  }, 1000);
   const mqScan = window.__mq;
   if (mqScan && typeof mqScan.on === 'function') {
     const qsScan = new URLSearchParams(location.search);
@@ -1965,11 +1943,8 @@ try {
       try {
         const d = JSON.parse(new TextDecoder().decode(payload));
         if (Array.isArray(d.ranges) && d.ranges.length) {
-          scanLive.ranges = d.ranges;
-          scanLive.lastAt = performance.now();
-          scanLive.wallAt = Date.now();
-          scanLive.stale = false;
-          drawLiveScan();
+          scanLive.scaleM = polarScaleFor(d.ranges, scanLive.scaleM || 0);
+          window.__lidarRanges = { ranges: d.ranges, ts: Date.now(), scaleM: scanLive.scaleM };
         }
       } catch (e) { /* ignore malformed packets */ }
     });
@@ -1986,7 +1961,7 @@ try {
       } catch (e) { /* ignore malformed packets */ }
     });
   }
-} catch (e) { console.warn('lidar scan panel disabled', e); }
+} catch (e) { console.warn('lidar overlay feed disabled', e); }
 
 /* ============ minimap ============ */
 const mm = document.getElementById('minimap').getContext('2d');
@@ -2014,6 +1989,39 @@ function drawMinimap() {
     trailPts.forEach((p, i) => i ? mm.lineTo(mmX(p.x), mmY(p.z)) : mm.moveTo(mmX(p.x), mmY(p.z)));
     mm.stroke();
   }
+  /* live lidar inset (Sinh): the latest 360° scan plotted around the ship
+     symbol, north-up — bin i bears at heading + i (compass convention:
+     0 = up/north, clockwise). R_in maps to the scan's auto scale in metres
+     (a local obstacle inset; unrelated to the geographic track scale).
+     Only drawn while the scan is fresh (<10 s); best-effort — any failure
+     leaves the minimap exactly as before. */
+  try {
+    const LR = window.__lidarRanges;
+    if (LR && LR.ranges && LR.scaleM > 0 && Date.now() - LR.ts < 10000) {
+      const R_in = 0.42 * (MM / 2);
+      const cx = mmX(shipPos.x), cy = mmY(shipPos.z);
+      const pts = [];
+      for (let i = 0; i < LR.ranges.length; i++) {
+        const r = LR.ranges[i];
+        if (!(r > 0)) continue;
+        const b = (headingDeg + i) * Math.PI / 180;
+        const d = Math.min(r / 1000, LR.scaleM) / LR.scaleM * R_in;
+        pts.push([cx + Math.sin(b) * d, cy - Math.cos(b) * d]);
+      }
+      if (pts.length > 2) {
+        mm.fillStyle = 'rgba(56,189,248,0.10)';
+        mm.beginPath();
+        pts.forEach((p, i) => i ? mm.lineTo(p[0], p[1]) : mm.moveTo(p[0], p[1]));
+        mm.closePath(); mm.fill();
+      }
+      mm.strokeStyle = 'rgba(56,189,248,0.45)'; mm.lineWidth = 1.2;
+      mm.beginPath(); mm.arc(cx, cy, R_in, 0, Math.PI * 2); mm.stroke();
+      mm.fillStyle = '#38bdf8';
+      for (const p of pts) { mm.beginPath(); mm.arc(p[0], p[1], 2, 0, Math.PI * 2); mm.fill(); }
+      mm.fillStyle = 'rgba(56,189,248,0.7)'; mm.font = '12px monospace';
+      mm.fillText('LIDAR ' + LR.scaleM + ' m', cx - R_in * 0.8, cy + R_in * 0.58);
+    }
+  } catch (e) { /* lidar inset is best-effort */ }
   const h = headingDeg * Math.PI / 180;
   const sx = mmX(shipPos.x), sy = mmY(shipPos.z);
   /* COG vector predictor (ECDIS style) */
