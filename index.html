@@ -48,9 +48,15 @@
        no panel fill, border, blur or shadow; cells keep only hairlines */
     background:transparent; border-color:transparent; box-shadow:none;
     backdrop-filter:none; -webkit-backdrop-filter:none; }
-  #console .cell { flex:0 0 268px; min-width:0; background:transparent; border:1px solid rgba(96,190,255,.16);
-    border-radius:9px; padding:8px 10px 6px; }
-  #console .cell.compassCell { background:transparent; }
+  /* deep-blue cell fill (Sinh): the bright sea behind the console washed the
+     charts out — cells now sit on a mostly-opaque navy gradient so chart
+     lines, lidar points and labels stay legible; scoped to #console only,
+     the history drawer keeps its own look */
+  #console .cell { flex:0 0 268px; min-width:0;
+    background:linear-gradient(180deg, rgba(7,34,58,.88), rgba(4,22,40,.92));
+    border:1px solid rgba(56,189,248,.35);
+    border-radius:9px; padding:8px 10px 6px;
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
   #console .dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin:0 4px 1px 0; }
   #console .cell.compassCell { flex:0 0 128px; text-align:center; }
   #console .hd { font-size:9px; letter-spacing:.1em; color:#6fd3ff; display:flex; justify-content:space-between; margin-bottom:4px; white-space:nowrap; }
