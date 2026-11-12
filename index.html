@@ -16,7 +16,6 @@
     border:1px solid rgba(96,190,255,.42); border-top:2px solid rgba(111,211,255,.6);
     border-radius:12px; backdrop-filter:blur(10px);
     box-shadow:0 12px 36px rgba(0,10,25,.5), inset 0 1px 0 rgba(170,225,255,.16); }
-  /* telemetry, top-left */
   /* header bar: the UTH logo lives in a real page header — the 3D view and
      every HUD panel start below it, so nothing is ever overlapped */
   #logoPlate { position:fixed; top:0; left:0; right:0; height:var(--hdrH); z-index:20;
@@ -25,18 +24,13 @@
     border-bottom:1px solid rgba(96,190,255,.28);
     box-shadow:0 6px 18px rgba(2,12,26,.35);
     backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
-  /* logo moved to the far left (Sinh): it leads a left cluster in the
-     header, with #btnMenu flowing right after it (see #btnMenu order) */
+  /* logo moved to the far left (Sinh): it leads the header, with the ☰
+     sidebar toggle flowing right after it (see #btnSide order) */
   #logoPlate img { display:block; height:52px; width:auto; margin-left:14px; }
-  /* slim HUD restyle (DIRECTION A): thinner glowing border, tighter rows —
-     same data, ids and update path as before */
-  /* telemetry is a toggleable panel (Sinh): hidden by default, the
-     header's SỐ LIỆU button opens it in this same top-left spot; the HUD
-     loop keeps writing its rows while hidden, so it never opens stale */
-  #telemetry { display:none; top:calc(var(--hdrH) + 10px); left:14px; padding:8px 12px 7px; min-width:242px;
-    border:1px solid rgba(56,189,248,.55);
-    box-shadow:0 10px 30px rgba(0,10,25,.5), 0 0 14px rgba(56,189,248,.16), inset 0 1px 0 rgba(170,225,255,.16); }
-  #telemetry.open { display:block; animation:pop .18s ease-out; }
+  /* telemetry rows now live in the sidebar (section 2): a plain block —
+     no floating panel, no border of its own; the HUD loop keeps writing
+     its rows while the sidebar is closed, so it never opens stale */
+  #telemetry { padding:2px 0 0; }
   #telemetry .hd { font-size:10px; letter-spacing:.22em; color:#6fd3ff;
     border-bottom:1px solid rgba(96,190,255,.25); padding-bottom:5px; margin-bottom:5px;
     display:flex; justify-content:space-between; }
@@ -56,10 +50,10 @@
      frame only; minimap/balance internals untouched */
   #minimapBox, #balanceBox { border:1px solid rgba(56,189,248,.5);
     box-shadow:0 12px 36px rgba(0,10,25,.5), 0 0 12px rgba(56,189,248,.14), inset 0 1px 0 rgba(170,225,255,.16); }
-  #minimapBox::before, #balanceBox::before, #telemetry::before { content:''; position:absolute;
+  #minimapBox::before, #balanceBox::before { content:''; position:absolute;
     top:-1px; left:-1px; width:13px; height:13px; pointer-events:none;
     border-top:2px solid #6fd3ff; border-left:2px solid #6fd3ff; border-top-left-radius:11px; }
-  #minimapBox::after, #balanceBox::after, #telemetry::after { content:''; position:absolute;
+  #minimapBox::after, #balanceBox::after { content:''; position:absolute;
     bottom:-1px; right:-1px; width:13px; height:13px; pointer-events:none;
     border-bottom:2px solid #6fd3ff; border-right:2px solid #6fd3ff; border-bottom-right-radius:11px; }
   /* charts, bottom-centre (Sinh: "đưa này vô giữa") — the gauge cluster
@@ -111,36 +105,50 @@
   .histScanCanvas { display:block; width:min(400px,100%); aspect-ratio:1/1; margin:0 auto; }
   .histScanFt { font-size:11px; color:#9fc6d8; margin-top:6px; text-align:center; }
   .histScanFt.err { color:#ffd9d4; }
-  /* controls, bottom-centre — restored: this whole block was accidentally
-     deleted in fcfea42 (title-lockup removal), leaving the view-settings
-     button unstyled and buried under the canvas; offsets raised slightly
-     (186->210, 238->262) to clear today's taller compact console */
-  /* in-flow flex item in the header's left cluster, right after the logo
-     (order:1 puts it after the img, which is later in the DOM); the flex
-     plate's align-items:center handles the vertical centring */
-  #btnMenu { position:static; z-index:21; order:1; flex:0 0 auto; margin-left:12px;
-    font:inherit; font-size:11.5px; letter-spacing:.1em; cursor:pointer; color:#eaf7ff;
+  /* the header's ONLY button now (Sinh): one ☰ toggle for the sidebar,
+     in-flow flex item right after the logo (order:1 puts it after the
+     img, which is later in the DOM); the flex plate's align-items:center
+     handles the vertical centring. Same pill language as the three
+     buttons it replaces; .on is the lit state while the sidebar is open */
+  #btnSide { position:static; z-index:21; order:1; flex:0 0 auto; margin-left:12px;
+    font:inherit; font-size:15px; line-height:1; cursor:pointer; color:#eaf7ff;
     background:linear-gradient(160deg, rgba(7,34,60,.88), rgba(4,20,38,.85));
     border:1px solid rgba(111,211,255,.55); border-top:2px solid rgba(111,211,255,.7);
-    border-radius:999px; padding:8px 18px; backdrop-filter:blur(10px);
+    border-radius:999px; padding:9px 16px; backdrop-filter:blur(10px);
     box-shadow:0 10px 30px rgba(0,10,25,.5); transition:all .18s; }
-  #btnMenu:hover { border-color:#6fd3ff; box-shadow:0 10px 34px rgba(20,120,200,.45); }
-  /* telemetry toggle (Sinh): same pill as #btnMenu, next in the header's
-     left cluster (order:2, right after ĐIỀU KHIỂN); .on mirrors the lit
-     state of #btnHistory.on so all header toggles read the same way */
-  #btnTele { position:static; z-index:21; order:2; flex:0 0 auto; margin-left:12px;
-    font:inherit; font-size:11.5px; letter-spacing:.1em; cursor:pointer; color:#eaf7ff;
-    background:linear-gradient(160deg, rgba(7,34,60,.88), rgba(4,20,38,.85));
-    border:1px solid rgba(111,211,255,.55); border-top:2px solid rgba(111,211,255,.7);
-    border-radius:999px; padding:8px 18px; backdrop-filter:blur(10px);
-    box-shadow:0 10px 30px rgba(0,10,25,.5); transition:all .18s; }
-  #btnTele:hover { border-color:#6fd3ff; box-shadow:0 10px 34px rgba(20,120,200,.45); }
-  #btnTele.on { background:#0e5f9e; border-color:#6fd3ff; color:#fff; }
-  /* left edge aligned with #btnMenu's new spot in the header cluster:
-     14 (logo margin) + 355 (logo width at 52px tall) + 12 (gap) = 381 */
-  #controls { left:381px; top:calc(var(--hdrH) + 10px); width:352px; padding:14px 16px 12px; z-index:21;
-    animation:pop .18s ease-out; }
-  @keyframes pop { from { opacity:0; transform:translateY(-6px) scale(.98); } to { opacity:1; transform:none; } }
+  #btnSide:hover { border-color:#6fd3ff; box-shadow:0 10px 34px rgba(20,120,200,.45); }
+  #btnSide.on { background:#0e5f9e; border-color:#6fd3ff; color:#fff; }
+  /* collapsible sidebar (Sinh): the header's three crude pills collapse
+     into this one left panel — motor telegraph, telemetry rows and the
+     history log stacked as three sections (DOM moved, not duplicated).
+     Slide motion per the overlay guide: transform only, 500 ms in /
+     350 ms out on the iOS sheet curve; the panel stays in the DOM while
+     closed (visibility, not display) so telemetry keeps updating and
+     the history canvases keep their layout size */
+  #sidebar { position:fixed; top:var(--hdrH); left:0; bottom:0; width:360px; max-width:100vw; z-index:19;
+    display:flex; flex-direction:column; color:#cfeaff;
+    background:linear-gradient(180deg, rgba(5,26,48,.97), rgba(4,20,38,.95));
+    border-right:1px solid rgba(96,190,255,.35);
+    box-shadow:18px 0 40px rgba(0,10,25,.45); backdrop-filter:blur(12px);
+    transform:translateX(-105%); visibility:hidden;
+    transition:transform .35s cubic-bezier(0.32,0.72,0,1), visibility 0s linear .35s; }
+  #sidebar.open { transform:translateX(0); visibility:visible;
+    transition:transform .5s cubic-bezier(0.32,0.72,0,1), visibility 0s; }
+  @media (prefers-reduced-motion: reduce) {
+    #sidebar { transform:none; opacity:0; transition:opacity .15s ease-out, visibility 0s linear .15s; }
+    #sidebar.open { opacity:1; transition:opacity .15s ease-out, visibility 0s; }
+  }
+  #sidebar .sideHd { flex:0 0 auto; display:flex; justify-content:space-between; align-items:center;
+    font-size:11px; letter-spacing:.22em; color:#6fd3ff;
+    padding:12px 16px 10px; border-bottom:1px solid rgba(96,190,255,.25); }
+  #btnSideClose { font:inherit; border:none; background:none; color:#7fa8c9; font-size:14px;
+    padding:2px 6px; cursor:pointer; }
+  #btnSideClose:hover { color:#fff; }
+  #sideBody { flex:1 1 auto; overflow-y:auto; overflow-x:hidden; padding:12px 16px 18px; }
+  #sideBody .sideSec + .sideSec { border-top:1px solid rgba(96,190,255,.22); margin-top:16px; padding-top:14px; }
+  /* motor controls are sidebar section 1 now: a plain block, the old
+     floating-popup positioning is gone; descendant rules unchanged */
+  #controls { padding:2px 0 0; }
   #controls .popHd { display:flex; justify-content:space-between; align-items:center;
     font-size:10.5px; letter-spacing:.22em; color:#6fd3ff;
     border-bottom:1px solid rgba(96,190,255,.25); padding-bottom:9px; margin-bottom:10px; }
@@ -150,9 +158,6 @@
     color:#cfeaff; background:rgba(10,44,74,.65); border:1px solid rgba(96,190,255,.35);
     border-radius:9px; padding:9px 4px; transition:all .15s; }
   #controls button:hover { border-color:#6fd3ff; color:#fff; }
-  #controls #btnClosePop { border:none; background:none; color:#7fa8c9; font-size:14px;
-    padding:2px 6px; cursor:pointer; }
-  #controls #btnClosePop:hover { color:#fff; }
   /* DC motor control section (inside #controls): engine telegraph lever +
      quick buttons, publishes to the ESP32 over the same MQTT client as
      the feed. The lever (Sinh, KIP engine-page style) replaces the old
@@ -202,23 +207,11 @@
   #controls .motorHint { margin-top:6px; font-size:10.5px; color:#ffb04d; letter-spacing:.05em; }
   #controls .popHint { margin-top:11px; padding-top:9px; border-top:1px solid rgba(96,190,255,.18);
     font-size:10px; line-height:1.55; color:#7fa8c9; letter-spacing:.03em; }
-  /* history button in the header (right side, mirrors #btnMenu on the left) */
-  #btnHistory { position:absolute; z-index:21; right:14px; top:50%; transform:translateY(-50%);
-    font:inherit; font-size:11.5px; letter-spacing:.1em; cursor:pointer; color:#eaf7ff;
-    background:linear-gradient(160deg, rgba(7,34,60,.88), rgba(4,20,38,.85));
-    border:1px solid rgba(111,211,255,.55); border-top:2px solid rgba(111,211,255,.7);
-    border-radius:999px; padding:8px 18px; backdrop-filter:blur(10px);
-    box-shadow:0 10px 30px rgba(0,10,25,.5); transition:all .18s; }
-  #btnHistory:hover { border-color:#6fd3ff; box-shadow:0 10px 34px rgba(20,120,200,.45); }
-  #btnHistory.on { background:#0e5f9e; border-color:#6fd3ff; color:#fff; }
-  /* history drawer: sensor-data log served by the home storage machine;
-     drops down below the fixed header as an overlay, page layout untouched */
-  #history { position:fixed; top:var(--hdrH); left:0; right:0; z-index:19;
-    max-height:calc(100vh - var(--hdrH)); overflow-y:auto; padding:12px 16px 16px;
-    color:#cfeaff; background:linear-gradient(180deg, rgba(5,26,48,.97), rgba(4,20,38,.94));
-    border-bottom:1px solid rgba(96,190,255,.35);
-    box-shadow:0 18px 40px rgba(0,10,25,.55); backdrop-filter:blur(12px);
-    animation:pop .18s ease-out; }
+  /* history is sidebar section 3 now: sensor-data log served by the home
+     storage machine, a plain block inside the sidebar — the old
+     full-width drop-down drawer presentation is gone; descendant rules
+     (headers, buttons, charts, tables) unchanged */
+  #history { color:#cfeaff; padding:2px 0 0; }
   #history .histHd { display:flex; justify-content:space-between; align-items:center;
     font-size:11px; letter-spacing:.22em; color:#6fd3ff;
     border-bottom:1px solid rgba(96,190,255,.25); padding-bottom:9px; margin-bottom:10px; }
@@ -228,8 +221,6 @@
     border-radius:9px; padding:7px 12px; transition:all .15s; }
   #history button:hover { border-color:#6fd3ff; color:#fff; }
   #history button.on { background:#0e5f9e; border-color:#6fd3ff; color:#fff; }
-  #history #btnHistClose { border:none; background:none; color:#7fa8c9; font-size:14px; padding:2px 6px; }
-  #history #btnHistClose:hover { color:#fff; }
   .histBar { display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-bottom:8px; }
   .histLbl { font-size:9.5px; letter-spacing:.24em; color:#7fa8c9; margin-right:2px; }
   .histStats { font-size:11px; color:#9fc6d8; margin-bottom:10px; letter-spacing:.04em; }
@@ -311,33 +302,18 @@
   }
   @media (max-width:820px) {
     :root { --hdrH:54px; }
-    /* the logo is a wide 929x136 plate: at 36px tall it is 246px wide and
-       leaves no room on a 390px row for both header buttons beside it —
-       at 24px (164px wide) logo + both buttons fit with a clear gap */
+    /* the logo is a wide 929x136 plate: at 36px tall it is 246px wide —
+       at 24px (164px wide) the logo + the single ☰ toggle fit easily */
     #logoPlate img { height:24px; margin-left:10px; }
-    /* on mobile the telemetry toggle hangs under the header (see #btnTele
-       below), so the open panel starts below the button, not under it;
-       as a summoned overlay it also paints above the right column here —
-       at this width the two would otherwise overlap and hide its values */
-    #telemetry { top:calc(var(--hdrH) + 46px); min-width:0; padding:8px 10px; z-index:15; } #telemetry .row { font-size:11px; }
+    #telemetry .row { font-size:11px; }
     #minimap { width:148px; height:148px; }
     #balCanvas { width:148px; height:103px; }
     #console { display:none; }
-    #btnMenu { margin-left:6px; padding:7px 8px; font-size:10.5px; letter-spacing:.04em; }
-    /* no room for a third pill inside the 54px header at this width (the
-       two existing buttons already meet around 375px): the telemetry
-       toggle hangs just under the header, where its panel opens */
-    /* background goes nearly opaque here (the header bar's own tones):
-       hanging over the bright 3D scene, the translucent pill gradient
-       dropped its text under 4.5:1 contrast (probe P1) */
-    #btnTele { position:absolute; left:10px; top:calc(100% + 8px); margin-left:0;
-      padding:8px 10px; font-size:10.5px; letter-spacing:.04em;
-      background:linear-gradient(180deg, rgba(4,22,42,.97), rgba(5,26,48,.95)); }
-    #btnHistory { right:10px; padding:7px 8px; font-size:10.5px; letter-spacing:.04em; }
-    #history { padding:10px 10px 12px; }
+    #btnSide { margin-left:6px; padding:7px 12px; font-size:14px; }
+    /* the sidebar becomes a full-width overlay panel under the header */
+    #sidebar { width:100vw; }
+    #sideBody { padding:10px 12px 14px; }
     .histChart { height:100px; }
-    #controls { left:10px; right:10px; width:auto; top:calc(var(--hdrH) + 8px); }
-   
   }
 </style>
 </head>
@@ -345,21 +321,122 @@
 <canvas id="scene"></canvas>
 <div id="vignette"></div>
 
-<div id="logoPlate"><button id="btnMenu">🎛 ĐIỀU KHIỂN</button><button id="btnTele" aria-pressed="false">📡 SỐ LIỆU</button><img src="uth-logo.png" alt="UTH — University of Transport Ho Chi Minh City"><button id="btnHistory">📜 LỊCH SỬ</button></div>
+<div id="logoPlate"><button id="btnSide" aria-expanded="false" aria-controls="sidebar" title="Mở / đóng bảng điều khiển">☰</button><img src="uth-logo.png" alt="UTH — University of Transport Ho Chi Minh City"></div>
 
-<div class="hud" id="telemetry">
-  <div class="hd"><span>NAV · TELEMETRY</span><span class="live" id="tMode" style="color:#ffb04d">● MÔ PHỎNG</span></div>
-  <div class="row"><span class="k">UTC</span><span class="v" id="tUtc">--:--:--</span></div>
-  <div class="row"><span class="k" id="kLat">LAT</span><span class="v" id="tLat">--</span></div>
-  <div class="row"><span class="k" id="kLon">LON</span><span class="v" id="tLon">--</span></div>
-  <div class="row"><span class="k">HDG</span><span class="v" id="tHdg">--</span></div>
-  <div class="row"><span class="k">COG</span><span class="v" id="tCog">--</span></div>
-  <div class="row"><span class="k">SOG</span><span class="v" id="tSog">--</span></div>
-  <div class="row"><span class="k">WIND</span><span class="v" id="tWind">--</span></div>
-  <div class="row"><span class="k">SEA</span><span class="v" id="tSea">--</span></div>
-  <div class="row"><span class="k">DEPTH</span><span class="v" id="tDepth">--</span></div>
-  <div class="row"><span class="k">RNG·WPT</span><span class="v" id="tRng">--</span></div>
-</div>
+<aside id="sidebar" aria-hidden="true">
+  <div class="sideHd"><span>BẢNG ĐIỀU KHIỂN</span><button id="btnSideClose" title="Đóng">✕</button></div>
+  <div id="sideBody">
+    <section class="sideSec">
+      <div id="controls">
+        <div class="popHd"><span>ĐIỀU KHIỂN ĐỘNG CƠ</span></div>
+        <div class="popSec">ĐỘNG CƠ DC</div>
+        <div class="motorBox">
+          <div class="teleLayout">
+            <div class="tele" id="tele" role="slider" tabindex="0" aria-label="Cần gạt động cơ DC"
+                 aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0" aria-valuetext="DỪNG 0%">
+              <div class="teleTrack"></div>
+              <div class="teleRow fwd" data-v="100"><span class="teleVal">+100</span><span class="teleTick"></span><span class="teleLab">TIẾN HẾT</span></div>
+              <div class="teleRow fwd" data-v="75"><span class="teleVal">+75</span><span class="teleTick"></span><span class="teleLab"></span></div>
+              <div class="teleRow fwd" data-v="50"><span class="teleVal">+50</span><span class="teleTick"></span><span class="teleLab">TIẾN VỪA</span></div>
+              <div class="teleRow fwd" data-v="25"><span class="teleVal">+25</span><span class="teleTick"></span><span class="teleLab"></span></div>
+              <div class="teleRow stop on" data-v="0"><span class="teleVal">0</span><span class="teleTick"></span><span class="teleLab">DỪNG</span></div>
+              <div class="teleRow rev" data-v="-25"><span class="teleVal">−25</span><span class="teleTick"></span><span class="teleLab"></span></div>
+              <div class="teleRow rev" data-v="-50"><span class="teleVal">−50</span><span class="teleTick"></span><span class="teleLab">LÙI VỪA</span></div>
+              <div class="teleRow rev" data-v="-75"><span class="teleVal">−75</span><span class="teleTick"></span><span class="teleLab"></span></div>
+              <div class="teleRow rev" data-v="-100"><span class="teleVal">−100</span><span class="teleTick"></span><span class="teleLab">LÙI HẾT</span></div>
+              <div class="teleHandle stop" id="teleHandle"></div>
+            </div>
+            <div class="teleSide">
+              <b class="motorValBig" id="motorVal">0%</b>
+              <span class="motorDir stop" id="motorDir">DỪNG</span>
+            </div>
+          </div>
+          <div class="popGrid">
+            <button id="btnMotorRev">◀ LÙI 50</button>
+            <button id="btnMotorStop">⏹ DỪNG</button>
+            <button id="btnMotorFwd">TIẾN 50 ▶</button>
+          </div>
+          <div class="motorFb" id="motorFb" style="display:none">ESP32 đang chạy: <b id="motorFbVal">0%</b></div>
+          <div class="motorHint" id="motorHint" style="display:none">chưa kết nối MQTT</div>
+        </div>
+        <div class="popHint">Mẹo: kéo / vuốt trực tiếp trên mô hình để xoay góc nhìn · cuộn chuột hoặc chụm 2 ngón để zoom.</div>
+      </div>
+    </section>
+    <section class="sideSec">
+      <div id="telemetry">
+        <div class="hd"><span>NAV · TELEMETRY</span><span class="live" id="tMode" style="color:#ffb04d">● MÔ PHỎNG</span></div>
+        <div class="row"><span class="k">UTC</span><span class="v" id="tUtc">--:--:--</span></div>
+        <div class="row"><span class="k" id="kLat">LAT</span><span class="v" id="tLat">--</span></div>
+        <div class="row"><span class="k" id="kLon">LON</span><span class="v" id="tLon">--</span></div>
+        <div class="row"><span class="k">HDG</span><span class="v" id="tHdg">--</span></div>
+        <div class="row"><span class="k">COG</span><span class="v" id="tCog">--</span></div>
+        <div class="row"><span class="k">SOG</span><span class="v" id="tSog">--</span></div>
+        <div class="row"><span class="k">WIND</span><span class="v" id="tWind">--</span></div>
+        <div class="row"><span class="k">SEA</span><span class="v" id="tSea">--</span></div>
+        <div class="row"><span class="k">DEPTH</span><span class="v" id="tDepth">--</span></div>
+        <div class="row"><span class="k">RNG·WPT</span><span class="v" id="tRng">--</span></div>
+      </div>
+    </section>
+    <section class="sideSec">
+      <div id="history">
+        <div class="histHd"><span>📜 LỊCH SỬ DỮ LIỆU CẢM BIẾN</span>
+          <span class="histHdBtns"><button id="btnHistRefresh">↻ LÀM MỚI</button></span>
+        </div>
+        <div class="histBar"><span class="histLbl">KHOẢNG THỜI GIAN</span>
+          <button data-min="15">15 PHÚT</button>
+          <button data-min="60" class="on">1 GIỜ</button>
+          <button data-min="360">6 GIỜ</button>
+          <button data-min="1440">24 GIỜ</button>
+          <button data-min="4320">3 NGÀY</button>
+        </div>
+        <div class="histStats" id="histStats">—</div>
+        <div class="histTabs">
+          <button id="tabShipBtn" class="on">🚢 TÀU &amp; LA BÀN</button>
+          <button id="tabLidarBtn">📡 LIDAR</button>
+        </div>
+        <div class="histMsg" id="histMsg" style="display:none"></div>
+        <div id="paneShip">
+          <div class="histChartBox">
+            <div class="histChartHd"><span>HDG · HƯỚNG TÀU (°)</span><b id="histHdgV">--</b></div>
+            <canvas class="histChart" id="histHdg"></canvas>
+          </div>
+          <div class="histChartBox">
+            <div class="histChartHd"><span>ROT · TỐC ĐỘ XOAY (°/PHÚT)</span><b id="histRotV">--</b></div>
+            <canvas class="histChart" id="histRot"></canvas>
+          </div>
+          <div class="histChartBox">
+            <div class="histChartHd"><span>MOTOR · TỐC ĐỘ ĐỘNG CƠ (%)</span><b id="histMotorV">--</b></div>
+            <canvas class="histChart" id="histMotor"></canvas>
+          </div>
+          <div class="histTableWrap"><table class="histTable">
+            <thead><tr><th>GIỜ</th><th>X (m)</th><th>Y (m)</th><th>HDG (°)</th><th>ROT (°/phút)</th><th>MOTOR (%)</th><th>HIỆU CHUẨN</th></tr></thead>
+            <tbody id="tblShipBody"></tbody>
+          </table></div>
+        </div>
+        <div id="paneLidar" style="display:none">
+          <div class="histChartBox">
+            <div class="histChartHd"><span>VÒNG QUÉT GẦN NHẤT ĐÃ LƯU</span><b id="histScanT">--</b></div>
+            <canvas id="histScan" class="histScanCanvas"></canvas>
+            <div class="histScanFt" id="histScanFt">Đang tải vòng quét…</div>
+          </div>
+          <div class="histChartBox">
+            <div class="histChartHd"><span>SỐ ĐIỂM QUÉT (điểm/vòng)</span><b id="histNV">--</b></div>
+            <canvas class="histChart" id="histN"></canvas>
+          </div>
+          <div class="histChartBox">
+            <div class="histChartHd"><span>VẬT GẦN NHẤT (mm)</span><b id="histNearV">--</b></div>
+            <canvas class="histChart" id="histNear"></canvas>
+          </div>
+          <div class="histTableWrap"><table class="histTable">
+            <thead><tr><th>GIỜ</th><th>TRẠNG THÁI</th><th>SỐ ĐIỂM</th><th>GẦN NHẤT (mm)</th><th>XA NHẤT (mm)</th></tr></thead>
+            <tbody id="tblLidarBody"></tbody>
+          </table></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</aside>
+
 
 <div id="rightCol">
   <div class="hud" id="minimapBox">
@@ -390,97 +467,6 @@
   <div class="cell">
     <canvas class="gauge" id="gMotor" width="236" height="236"></canvas>
     <div class="gcap"><span class="gcapL">ĐỘNG CƠ DC</span><span class="gcapSep">—</span><b class="gcapV" id="capMotV">—</b></div>
-  </div>
-</div>
-
-<div class="hud" id="controls" style="display:none">
-  <div class="popHd"><span>ĐIỀU KHIỂN ĐỘNG CƠ</span><button id="btnClosePop" title="Đóng">✕</button></div>
-  <div class="popSec">ĐỘNG CƠ DC</div>
-  <div class="motorBox">
-    <div class="teleLayout">
-      <div class="tele" id="tele" role="slider" tabindex="0" aria-label="Cần gạt động cơ DC"
-           aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0" aria-valuetext="DỪNG 0%">
-        <div class="teleTrack"></div>
-        <div class="teleRow fwd" data-v="100"><span class="teleVal">+100</span><span class="teleTick"></span><span class="teleLab">TIẾN HẾT</span></div>
-        <div class="teleRow fwd" data-v="75"><span class="teleVal">+75</span><span class="teleTick"></span><span class="teleLab"></span></div>
-        <div class="teleRow fwd" data-v="50"><span class="teleVal">+50</span><span class="teleTick"></span><span class="teleLab">TIẾN VỪA</span></div>
-        <div class="teleRow fwd" data-v="25"><span class="teleVal">+25</span><span class="teleTick"></span><span class="teleLab"></span></div>
-        <div class="teleRow stop on" data-v="0"><span class="teleVal">0</span><span class="teleTick"></span><span class="teleLab">DỪNG</span></div>
-        <div class="teleRow rev" data-v="-25"><span class="teleVal">−25</span><span class="teleTick"></span><span class="teleLab"></span></div>
-        <div class="teleRow rev" data-v="-50"><span class="teleVal">−50</span><span class="teleTick"></span><span class="teleLab">LÙI VỪA</span></div>
-        <div class="teleRow rev" data-v="-75"><span class="teleVal">−75</span><span class="teleTick"></span><span class="teleLab"></span></div>
-        <div class="teleRow rev" data-v="-100"><span class="teleVal">−100</span><span class="teleTick"></span><span class="teleLab">LÙI HẾT</span></div>
-        <div class="teleHandle stop" id="teleHandle"></div>
-      </div>
-      <div class="teleSide">
-        <b class="motorValBig" id="motorVal">0%</b>
-        <span class="motorDir stop" id="motorDir">DỪNG</span>
-      </div>
-    </div>
-    <div class="popGrid">
-      <button id="btnMotorRev">◀ LÙI 50</button>
-      <button id="btnMotorStop">⏹ DỪNG</button>
-      <button id="btnMotorFwd">TIẾN 50 ▶</button>
-    </div>
-    <div class="motorFb" id="motorFb" style="display:none">ESP32 đang chạy: <b id="motorFbVal">0%</b></div>
-    <div class="motorHint" id="motorHint" style="display:none">chưa kết nối MQTT</div>
-  </div>
-  <div class="popHint">Mẹo: kéo / vuốt trực tiếp trên mô hình để xoay góc nhìn · cuộn chuột hoặc chụm 2 ngón để zoom.</div>
-</div>
-
-<div id="history" style="display:none">
-  <div class="histHd"><span>📜 LỊCH SỬ DỮ LIỆU CẢM BIẾN</span>
-    <span class="histHdBtns"><button id="btnHistRefresh">↻ LÀM MỚI</button><button id="btnHistClose" title="Đóng">✕</button></span>
-  </div>
-  <div class="histBar"><span class="histLbl">KHOẢNG THỜI GIAN</span>
-    <button data-min="15">15 PHÚT</button>
-    <button data-min="60" class="on">1 GIỜ</button>
-    <button data-min="360">6 GIỜ</button>
-    <button data-min="1440">24 GIỜ</button>
-    <button data-min="4320">3 NGÀY</button>
-  </div>
-  <div class="histStats" id="histStats">—</div>
-  <div class="histTabs">
-    <button id="tabShipBtn" class="on">🚢 TÀU &amp; LA BÀN</button>
-    <button id="tabLidarBtn">📡 LIDAR</button>
-  </div>
-  <div class="histMsg" id="histMsg" style="display:none"></div>
-  <div id="paneShip">
-    <div class="histChartBox">
-      <div class="histChartHd"><span>HDG · HƯỚNG TÀU (°)</span><b id="histHdgV">--</b></div>
-      <canvas class="histChart" id="histHdg"></canvas>
-    </div>
-    <div class="histChartBox">
-      <div class="histChartHd"><span>ROT · TỐC ĐỘ XOAY (°/PHÚT)</span><b id="histRotV">--</b></div>
-      <canvas class="histChart" id="histRot"></canvas>
-    </div>
-    <div class="histChartBox">
-      <div class="histChartHd"><span>MOTOR · TỐC ĐỘ ĐỘNG CƠ (%)</span><b id="histMotorV">--</b></div>
-      <canvas class="histChart" id="histMotor"></canvas>
-    </div>
-    <div class="histTableWrap"><table class="histTable">
-      <thead><tr><th>GIỜ</th><th>X (m)</th><th>Y (m)</th><th>HDG (°)</th><th>ROT (°/phút)</th><th>MOTOR (%)</th><th>HIỆU CHUẨN</th></tr></thead>
-      <tbody id="tblShipBody"></tbody>
-    </table></div>
-  </div>
-  <div id="paneLidar" style="display:none">
-    <div class="histChartBox">
-      <div class="histChartHd"><span>VÒNG QUÉT GẦN NHẤT ĐÃ LƯU</span><b id="histScanT">--</b></div>
-      <canvas id="histScan" class="histScanCanvas"></canvas>
-      <div class="histScanFt" id="histScanFt">Đang tải vòng quét…</div>
-    </div>
-    <div class="histChartBox">
-      <div class="histChartHd"><span>SỐ ĐIỂM QUÉT (điểm/vòng)</span><b id="histNV">--</b></div>
-      <canvas class="histChart" id="histN"></canvas>
-    </div>
-    <div class="histChartBox">
-      <div class="histChartHd"><span>VẬT GẦN NHẤT (mm)</span><b id="histNearV">--</b></div>
-      <canvas class="histChart" id="histNear"></canvas>
-    </div>
-    <div class="histTableWrap"><table class="histTable">
-      <thead><tr><th>GIỜ</th><th>TRẠNG THÁI</th><th>SỐ ĐIỂM</th><th>GẦN NHẤT (mm)</th><th>XA NHẤT (mm)</th></tr></thead>
-      <tbody id="tblLidarBody"></tbody>
-    </table></div>
   </div>
 </div>
 
@@ -1681,35 +1667,39 @@ try {
    258 out / 122 up → distance ~285, ~25° elevation), re-centred on the ship */
 const ORBIT_HOME = new THREE.Vector3(Math.sin(2.45) * 258, 122, Math.cos(2.45) * 258);
 
-const popup = document.getElementById('controls');
-const btnMenu = document.getElementById('btnMenu');
-function togglePopup(show) {
-  popup.style.display = show === undefined ? (popup.style.display === 'none' ? 'block' : 'none') : (show ? 'block' : 'none');
+/* ============ collapsible sidebar (Sinh) ============
+   The header keeps only the logo and one ☰ toggle; the motor popup,
+   the NAV · TELEMETRY panel and the history drawer moved into this
+   left sidebar as three stacked sections (DOM moved, not duplicated).
+   Closed by default. The HUD loop keeps refreshing the telemetry rows
+   while the sidebar is closed, so it never opens on stale numbers.
+   Opening the sidebar is also what loads/draws the history charts —
+   the exact hook the old drawer's open used (the history functions
+   are declared further down; they run on click, after this module
+   has fully evaluated). No outside-click close and no backdrop: it is
+   a docked panel, closed via the ☰ toggle or its own ✕. */
+const sidebar = document.getElementById('sidebar');
+const btnSide = document.getElementById('btnSide');
+let sideOpen = false;
+function toggleSidebar(show) {
+  sideOpen = show === undefined ? !sideOpen : !!show;
+  sidebar.classList.toggle('open', sideOpen);
+  sidebar.setAttribute('aria-hidden', sideOpen ? 'false' : 'true');
+  btnSide.classList.toggle('on', sideOpen);
+  btnSide.setAttribute('aria-expanded', sideOpen ? 'true' : 'false');
+  if (sideOpen) {
+    histStatsLine();
+    loadHist(hist.tab);
+    requestAnimationFrame(() => renderHist(hist.tab));
+  }
 }
-btnMenu.addEventListener('click', (e) => { e.stopPropagation(); togglePopup(); });
-document.getElementById('btnClosePop').addEventListener('click', () => togglePopup(false));
-/* NAV · TELEMETRY panel as a header toggle (Sinh): hidden by default, the
-   SỐ LIỆU button shows/hides it in place. Unlike the controls popup it is
-   NOT closed by outside clicks — it is a readout the operator watches
-   while orbiting the ship. The HUD loop keeps refreshing its rows while
-   hidden, so it never opens on stale numbers. */
-const telePanel = document.getElementById('telemetry');
-const btnTele = document.getElementById('btnTele');
-function toggleTele(show) {
-  const open = show === undefined ? !telePanel.classList.contains('open') : !!show;
-  telePanel.classList.toggle('open', open);
-  btnTele.classList.toggle('on', open);
-  btnTele.setAttribute('aria-pressed', open ? 'true' : 'false');
-}
-btnTele.addEventListener('click', (e) => { e.stopPropagation(); toggleTele(); });
-document.addEventListener('click', (e) => {
-  if (popup.style.display !== 'none' && !popup.contains(e.target)) togglePopup(false);
-});
+btnSide.addEventListener('click', (e) => { e.stopPropagation(); toggleSidebar(); });
+document.getElementById('btnSideClose').addEventListener('click', () => toggleSidebar(false));
 /* sailing is permanently on: the ship always runs its route (the old
    DỪNG CHẠY pause button went away with the TRÌNH DIỄN section) */
 
 /* ============ DC MOTOR control -> ESP32 (MQTT cmd topic) ============
-   The telegraph lever in the controls popup publishes {"motor": -100..100}
+   The telegraph lever in sidebar section 1 publishes {"motor": -100..100}
    to bas/DP_SHIP_001/cmd through the SAME mqtt client as the live feed
    (window.__mq from the LIVE block — no second connection). Positive =
    TIEN (forward), negative = LUI (reverse), 0 = DUNG (stop). The lever
@@ -1836,11 +1826,11 @@ try {
   window.__motorSet = motorSet;
 } catch (e) { console.warn('motor control disabled', e); }
 
-/* ============ history drawer: logged sensor data (home server, Tailscale-only) ============ */
+/* ============ history (sidebar section 3): logged sensor data (home server, Tailscale-only) ============ */
 const h$ = id => document.getElementById(id);
 const HIST_BASE = (new URLSearchParams(location.search).get('history') ||
   'https://croz-system-product-name.tail080b17.ts.net').replace(/\/+$/, '');
-const histBox = h$('history'), btnHistory = h$('btnHistory');
+const histBox = h$('history');
 const hist = { min: 60, tab: 'ship', loaded: { ship: false, lidar: false }, data: { ship: null, lidar: null }, health: null };
 const HIST_ERR = 'Chưa kết nối được máy lưu trữ ở nhà. Lịch sử chỉ xem được từ thiết bị đã vào mạng Tailscale của Sinh.';
 
@@ -1984,18 +1974,8 @@ function renderLidarHist(d) {
   renderHistScan();
 }
 
-function toggleHistory(show) {
-  const open = show === undefined ? histBox.style.display === 'none' : show;
-  histBox.style.display = open ? 'block' : 'none';
-  btnHistory.classList.toggle('on', open);
-  if (open) {
-    histStatsLine();
-    loadHist(hist.tab);
-    requestAnimationFrame(() => renderHist(hist.tab));
-  }
-}
-btnHistory.addEventListener('click', e => { e.stopPropagation(); toggleHistory(); });
-h$('btnHistClose').addEventListener('click', () => toggleHistory(false));
+/* history has no open/close state of its own anymore: it is sidebar
+   section 3, and toggleSidebar() runs the load/draw hook on open */
 h$('btnHistRefresh').addEventListener('click', () => { hist.health = null; loadHist(hist.tab, true); });
 histBox.querySelectorAll('[data-min]').forEach(b => b.addEventListener('click', () => {
   histBox.querySelectorAll('[data-min]').forEach(x => x.classList.toggle('on', x === b));
@@ -2015,7 +1995,7 @@ function histSetTab(tab) {
 }
 h$('tabShipBtn').addEventListener('click', () => histSetTab('ship'));
 h$('tabLidarBtn').addEventListener('click', () => histSetTab('lidar'));
-addEventListener('resize', () => { if (histBox.style.display !== 'none') renderHist(hist.tab); });
+addEventListener('resize', () => { if (sideOpen) renderHist(hist.tab); });
 
 /* ============ RPLIDAR 360° polar plot (shared: live panel + history) ============
    The scan is drawn in the LIDAR's own frame: bin i = angle i°, 0° at the
