@@ -1505,8 +1505,8 @@ try {
 } catch (e) { console.warn('balance widget disabled', e); }
 
 /* SHIP BALANCE upgrade: once the real GLB is in, swap the wireframe proxy
-   for a lit clone of the actual ship model (same colours/materials), floating
-   on a level sea disc — the balShip group keeps the exact same heel drive
+   for a lit clone of the actual ship model (same colours/materials), standing
+   bare on the card background — the balShip group keeps the exact same heel drive
    (tilt.rotation × 1.35 in animate()), so card ship and main ship stay in
    sync and the heel number keeps matching what visitors see. Everything
    fallible is prepared BEFORE the scene is touched, so any failure leaves
@@ -1536,15 +1536,8 @@ function balUpgrade(model) {
     const pm = new THREE.PMREMGenerator(balRenderer);
     const envTex = pm.fromScene(new RoomEnvironment(), 0.04).texture;
     pm.dispose();
-    /* the level sea disc (goes in balScene, NOT the rolling balShip group,
-       so the ship's tilt reads against a surface that stays flat) */
-    const disc = new THREE.Mesh(new THREE.CircleGeometry(3.05, 48),
-      new THREE.MeshStandardMaterial({ color: 0x17608f, transparent: true, opacity: 0.62, roughness: 0.3, metalness: 0.05 }));
-    disc.rotation.x = -Math.PI / 2;
-    const rimPts = [];
-    for (let i = 0; i <= 72; i++) { const a = i / 72 * Math.PI * 2; rimPts.push(new THREE.Vector3(Math.cos(a) * 3.05, 0.002, Math.sin(a) * 3.05)); }
-    const rim = new THREE.Line(new THREE.BufferGeometry().setFromPoints(rimPts),
-      new THREE.LineBasicMaterial({ color: 0x37dbe2, transparent: true, opacity: 0.5 }));
+    /* no sea disc: the ship stands bare on the card background
+       (Sinh's order 2026-11-12 — the flat water disc + its rim were removed) */
     /* ---- all fallible work done; now swap the scene over ---- */
     balRenderer.toneMapping = THREE.ACESFilmicToneMapping;
     balRenderer.toneMappingExposure = 1.06;
@@ -1553,7 +1546,7 @@ function balUpgrade(model) {
     for (const c of [...balScene.children]) if (c !== balShip) balScene.remove(c);
     while (balShip.children.length) balShip.remove(balShip.children[0]);
     balShip.add(holder);
-    balScene.add(hemi, key, fill, disc, rim);
+    balScene.add(hemi, key, fill);
     balReal = true;
     window.__balReal = { len: +size.x.toFixed(1), minY: +box.min.y.toFixed(2), maxY: +box.max.y.toFixed(2) };
   } catch (e) { console.warn('balance: real-model upgrade failed, keeping wireframe', e); }
