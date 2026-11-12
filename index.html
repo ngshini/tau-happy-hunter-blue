@@ -195,9 +195,23 @@
   #balanceBox .hd { font-size:10px; letter-spacing:.18em; color:#6fd3ff; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; }
   #balanceBox .ic { display:inline-flex; align-items:center; justify-content:center; width:21px; height:21px; border-radius:6px; border:1px solid #37e6ec55; background:#37e6ec22; color:#37e6ec; margin-right:6px; }
   #balanceBox .ic svg { width:14px; height:14px; }
-  #balCanvas { display:block; width:224px; height:110px; }
-  .balFt { font-size:10.5px; color:#9fc6d8; text-align:center; margin-top:4px; white-space:nowrap; }
-  .balFt b { color:#eaf7ff; font-size:11.5px; }
+  /* balance card restyle (Sinh, ref "Smart Maritime Operations Dashboard"):
+     the mini scene now renders the REAL coloured ship model on a deep-navy
+     radial backdrop inside the card; status moved to a pill in the header */
+  #balCanvas { display:block; width:224px; height:156px; border-radius:9px;
+    background:radial-gradient(115% 95% at 50% 36%, #17436f 0%, #0b2a4e 55%, #051a33 100%);
+    box-shadow:inset 0 0 0 1px rgba(96,190,255,.16), inset 0 -18px 30px rgba(2,10,22,.45); }
+  .balPill { font-size:9.5px; font-weight:700; letter-spacing:.13em; padding:3px 10px;
+    border-radius:999px; white-space:nowrap; color:#3dff8e;
+    background:rgba(61,255,142,.15); border:1px solid rgba(61,255,142,.55); }
+  .balFt { font-size:10.5px; color:#9fc6d8; text-align:center; margin-top:6px; white-space:nowrap; }
+  .balFt b { color:#eaf7ff; font-size:12.5px; }
+  .balBar { position:relative; height:5px; margin:8px 2px 2px; border-radius:3px;
+    background:linear-gradient(90deg, rgba(255,217,77,.38), rgba(96,190,255,.20) 50%, rgba(255,217,77,.38)); }
+  .balBarC { position:absolute; left:50%; top:-2px; width:1px; height:9px; background:rgba(207,234,255,.65); }
+  .balBarMark { position:absolute; top:50%; left:50%; width:11px; height:11px; border-radius:50%;
+    transform:translate(-50%,-50%); background:#eaf7ff; border:2px solid #38bdf8;
+    box-shadow:0 0 8px rgba(56,189,248,.85); }
   #compass { display:block; width:118px; height:118px; margin:0 auto; }
   #vignette { position:fixed; top:var(--hdrH); left:0; right:0; bottom:0; z-index:4; pointer-events:none;
     background:radial-gradient(ellipse at 50% 42%, transparent 52%, rgba(3,18,36,.42) 100%); }
@@ -216,7 +230,7 @@
     #logoPlate img { height:24px; margin-left:10px; }
     #telemetry { top:calc(var(--hdrH) + 8px); min-width:0; padding:8px 10px; } #telemetry .row { font-size:11px; }
     #minimap { width:148px; height:148px; }
-    #balCanvas { width:148px; height:73px; }
+    #balCanvas { width:148px; height:103px; }
     #console { display:none; }
     #btnMenu { margin-left:6px; padding:7px 8px; font-size:10.5px; letter-spacing:.04em; }
     #btnHistory { right:10px; padding:7px 8px; font-size:10.5px; letter-spacing:.04em; }
@@ -253,9 +267,10 @@
     <canvas id="minimap" width="448" height="448"></canvas>
   </div>
   <div class="hud" id="balanceBox">
-    <div class="hd"><span><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 7l7-4 7 4"/><path d="M3 13l2-6 2 6a3.5 3.5 0 0 1-4 0z"/><path d="M17 13l2-6 2 6a3.5 3.5 0 0 1-4 0z"/><path d="M8 21h8"/></svg></span>SHIP BALANCE</span><span>WIREFRAME 3D</span></div>
-    <canvas id="balCanvas" width="448" height="220"></canvas>
-    <div class="balFt">Nghiêng mạn: <b id="balHeel">0.0°</b> · Trạng thái: <b id="balStatus" style="color:#3dff8e">Standard</b></div>
+    <div class="hd"><span><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 7l7-4 7 4"/><path d="M3 13l2-6 2 6a3.5 3.5 0 0 1-4 0z"/><path d="M17 13l2-6 2 6a3.5 3.5 0 0 1-4 0z"/><path d="M8 21h8"/></svg></span>SHIP BALANCE</span><span class="balPill" id="balStatus">Standard</span></div>
+    <canvas id="balCanvas" width="448" height="312"></canvas>
+    <div class="balFt">Nghiêng mạn: <b id="balHeel">0.0°</b></div>
+    <div class="balBar"><span class="balBarC"></span><span class="balBarMark" id="balBarMark"></span></div>
   </div>
 </div>
 
@@ -1192,6 +1207,9 @@ new GLTFLoader().load('happy-hunter-blue.glb', (gltf) => {
   if (model.getObjectByName('SHIP_ROOT')) tilt.add(buildShipDetails());
   shipReady = true; window.__shipReady = true;
   document.getElementById('loading').classList.add('done');
+  /* the SHIP BALANCE card upgrades from its wireframe proxy to a lit clone
+     of this very model (guarded inside; wireframe stays on any failure) */
+  balUpgrade(model);
   /* the ship sails its route by itself — sailing is permanently on;
      the camera is the visitor's free orbit now, no auto-director */
 }, undefined, (e) => console.error('GLB load error', e));
@@ -1302,17 +1320,20 @@ function respawnSpray(i) {
 }
 
 
-/* ============ SHIP BALANCE: live wireframe attitude indicator ============ */
+/* ============ SHIP BALANCE: live attitude indicator ============
+   Boots instantly with a cyan wireframe proxy; balUpgrade() swaps in a lit
+   clone of the real ship model as soon as the GLB arrives (wireframe is the
+   permanent fallback if anything in the upgrade path fails). */
 let balOK = false, balRenderer, balScene, balCam, balShip, balLineMat;
 let balHeelTxt = '', balStatusTxt = '';
 try {
   balRenderer = new THREE.WebGLRenderer({ canvas: document.getElementById('balCanvas'), antialias: true, alpha: true });
-  balRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  balRenderer.setSize(224, 110, false);
+  balRenderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+  balRenderer.setSize(224, 156, false);
   balScene = new THREE.Scene();
-  balCam = new THREE.PerspectiveCamera(36, 224 / 110, 0.1, 80);
-  balCam.position.set(5.4, 3.1, 6.1);
-  balCam.lookAt(0, 0.55, 0);
+  balCam = new THREE.PerspectiveCamera(36, 224 / 156, 0.1, 80);
+  balCam.position.set(4.5, 2.5, 5.0);
+  balCam.lookAt(0, 0.8, 0);
   balLineMat = new THREE.LineBasicMaterial({ color: 0x3fe8ef, transparent: true, opacity: 0.95 });
   const balFillMat = new THREE.MeshBasicMaterial({ color: 0x0d4653, transparent: true, opacity: 0.16, depthWrite: false });
   const balRingMat = new THREE.LineBasicMaterial({ color: 0x2bb7c4, transparent: true, opacity: 0.45 });
@@ -1375,6 +1396,61 @@ try {
   }
   balOK = true;
 } catch (e) { console.warn('balance widget disabled', e); }
+
+/* SHIP BALANCE upgrade: once the real GLB is in, swap the wireframe proxy
+   for a lit clone of the actual ship model (same colours/materials), floating
+   on a level sea disc — the balShip group keeps the exact same heel drive
+   (tilt.rotation × 1.35 in animate()), so card ship and main ship stay in
+   sync and the heel number keeps matching what visitors see. Everything
+   fallible is prepared BEFORE the scene is touched, so any failure leaves
+   the wireframe fallback exactly as it was. */
+let balReal = false;
+function balUpgrade(model) {
+  if (!balOK || balReal || !model) return;
+  try {
+    const clone = model.clone(true);
+    clone.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
+    clone.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(clone);
+    const size = box.getSize(new THREE.Vector3());
+    const centre = box.getCenter(new THREE.Vector3());
+    if (!(size.x > 1)) throw new Error('degenerate model bounds');
+    /* GLB ground truth: length on X (~53.8 units), waterline at local y = 0 —
+       scale so the ship spans ~4.9 mini units, centred on x/z, y untouched */
+    const holder = new THREE.Group();
+    holder.scale.setScalar(4.9 / size.x);
+    clone.position.set(-centre.x, 0, -centre.z);
+    holder.add(clone);
+    /* lights + image-based ambience so the shared MeshStandardMaterials read
+       like the main render (main scene: RoomEnvironment PMREM + ACES) */
+    const hemi = new THREE.HemisphereLight(0xd8ecff, 0x1c4d75, 0.5);
+    const key = new THREE.DirectionalLight(0xfff2dd, 2.0); key.position.set(6, 9, 5);
+    const fill = new THREE.DirectionalLight(0xbcd9f2, 0.5); fill.position.set(-7, 4, -6);
+    const pm = new THREE.PMREMGenerator(balRenderer);
+    const envTex = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+    pm.dispose();
+    /* the level sea disc (goes in balScene, NOT the rolling balShip group,
+       so the ship's tilt reads against a surface that stays flat) */
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(3.05, 48),
+      new THREE.MeshStandardMaterial({ color: 0x17608f, transparent: true, opacity: 0.62, roughness: 0.3, metalness: 0.05 }));
+    disc.rotation.x = -Math.PI / 2;
+    const rimPts = [];
+    for (let i = 0; i <= 72; i++) { const a = i / 72 * Math.PI * 2; rimPts.push(new THREE.Vector3(Math.cos(a) * 3.05, 0.002, Math.sin(a) * 3.05)); }
+    const rim = new THREE.Line(new THREE.BufferGeometry().setFromPoints(rimPts),
+      new THREE.LineBasicMaterial({ color: 0x37dbe2, transparent: true, opacity: 0.5 }));
+    /* ---- all fallible work done; now swap the scene over ---- */
+    balRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+    balRenderer.toneMappingExposure = 1.06;
+    balScene.environment = envTex;
+    balScene.environmentIntensity = 0.45;
+    for (const c of [...balScene.children]) if (c !== balShip) balScene.remove(c);
+    while (balShip.children.length) balShip.remove(balShip.children[0]);
+    balShip.add(holder);
+    balScene.add(hemi, key, fill, disc, rim);
+    balReal = true;
+    window.__balReal = { len: +size.x.toFixed(1), minY: +box.min.y.toFixed(2), maxY: +box.max.y.toFixed(2) };
+  } catch (e) { console.warn('balance: real-model upgrade failed, keeping wireframe', e); }
+}
 
 
 /* ============ LIVE DATA from ESP32 (MQTT over WSS) ============
@@ -2245,10 +2321,20 @@ function updateHud(t) {
   const heelDeg = Math.abs(THREE.MathUtils.radToDeg(tilt.rotation.x));
   const hTxt = heelDeg.toFixed(1) + '°';
   if (hTxt !== balHeelTxt) { balHeelTxt = hTxt; el('balHeel').textContent = hTxt; }
-  const balSt = heelDeg <= 3 ? ['Standard', '#3dff8e'] : heelDeg <= 6 ? ['Nghiêng nhẹ', '#ffd94d'] : ['Cảnh báo', '#ff7a6b'];
+  /* heel-bar marker follows the SIGNED roll on a -6..+6° track */
+  const balMarkEl = el('balBarMark');
+  if (balMarkEl) {
+    const pct = Math.max(0, Math.min(100, 50 + THREE.MathUtils.radToDeg(tilt.rotation.x) / 6 * 50));
+    if (Math.abs(pct - (balMarkEl._p ?? -99)) > 0.3) { balMarkEl._p = pct; balMarkEl.style.left = pct.toFixed(1) + '%'; }
+  }
+  const balSt = heelDeg <= 3 ? ['Standard', '#3dff8e', 'rgba(61,255,142,.15)', 'rgba(61,255,142,.55)']
+              : heelDeg <= 6 ? ['Nghiêng nhẹ', '#ffd94d', 'rgba(255,217,77,.15)', 'rgba(255,217,77,.55)']
+              : ['Cảnh báo', '#ff7a6b', 'rgba(255,122,107,.16)', 'rgba(255,122,107,.6)'];
   if (balSt[0] !== balStatusTxt) {
     balStatusTxt = balSt[0];
-    const bsEl = el('balStatus'); bsEl.textContent = balSt[0]; bsEl.style.color = balSt[1];
+    const bsEl = el('balStatus');
+    bsEl.textContent = balSt[0]; bsEl.style.color = balSt[1];
+    bsEl.style.background = balSt[2]; bsEl.style.borderColor = balSt[3];
     if (balLineMat) balLineMat.color.set(heelDeg <= 3 ? 0x3fe8ef : heelDeg <= 6 ? 0xffd94d : 0xff8a70);
   }
   sogKn = s.sog; windNow = s.wind; stwNow = s.stw;
