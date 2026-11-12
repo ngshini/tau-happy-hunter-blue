@@ -24,9 +24,10 @@
     border-bottom:1px solid rgba(96,190,255,.28);
     box-shadow:0 6px 18px rgba(2,12,26,.35);
     backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
-  /* logo moved to the far left (Sinh): it leads the header, with the ☰
-     sidebar toggle flowing right after it (see #btnSide order) */
-  #logoPlate img { display:block; height:52px; width:auto; margin-left:14px; }
+  /* the ☰ sidebar toggle leads the header at the far left (Sinh:
+     "để bên trái logo") and the logo flows right after it — plain DOM
+     order, no flex order tricks */
+  #logoPlate img { display:block; height:52px; width:auto; margin-left:12px; }
   /* telemetry rows now live in the sidebar (section 2): a plain block —
      no floating panel, no border of its own; the HUD loop keeps writing
      its rows while the sidebar is closed, so it never opens stale */
@@ -106,11 +107,11 @@
   .histScanFt { font-size:11px; color:#9fc6d8; margin-top:6px; text-align:center; }
   .histScanFt.err { color:#ffd9d4; }
   /* the header's ONLY button now (Sinh): one ☰ toggle for the sidebar,
-     in-flow flex item right after the logo (order:1 puts it after the
-     img, which is later in the DOM); the flex plate's align-items:center
+     in-flow flex item at the far LEFT of the header, before the logo
+     (it is first in the DOM); the flex plate's align-items:center
      handles the vertical centring. Same pill language as the three
      buttons it replaces; .on is the lit state while the sidebar is open */
-  #btnSide { position:static; z-index:21; order:1; flex:0 0 auto; margin-left:12px;
+  #btnSide { position:static; z-index:21; flex:0 0 auto; margin-left:14px;
     font:inherit; font-size:15px; line-height:1; cursor:pointer; color:#eaf7ff;
     background:linear-gradient(160deg, rgba(7,34,60,.88), rgba(4,20,38,.85));
     border:1px solid rgba(111,211,255,.55); border-top:2px solid rgba(111,211,255,.7);
@@ -304,12 +305,12 @@
     :root { --hdrH:54px; }
     /* the logo is a wide 929x136 plate: at 36px tall it is 246px wide —
        at 24px (164px wide) the logo + the single ☰ toggle fit easily */
-    #logoPlate img { height:24px; margin-left:10px; }
+    #logoPlate img { height:24px; margin-left:6px; }
     #telemetry .row { font-size:11px; }
     #minimap { width:148px; height:148px; }
     #balCanvas { width:148px; height:103px; }
     #console { display:none; }
-    #btnSide { margin-left:6px; padding:7px 12px; font-size:14px; }
+    #btnSide { margin-left:10px; padding:7px 12px; font-size:14px; }
     /* the sidebar becomes a full-width overlay panel under the header */
     #sidebar { width:100vw; }
     #sideBody { padding:10px 12px 14px; }
