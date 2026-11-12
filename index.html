@@ -28,12 +28,16 @@
   /* logo moved to the far left (Sinh): it leads a left cluster in the
      header, with #btnMenu flowing right after it (see #btnMenu order) */
   #logoPlate img { display:block; height:52px; width:auto; margin-left:14px; }
-  #telemetry { top:calc(var(--hdrH) + 10px); left:14px; padding:10px 14px 9px; min-width:242px; }
+  /* slim HUD restyle (DIRECTION A): thinner glowing border, tighter rows —
+     same data, ids and update path as before */
+  #telemetry { top:calc(var(--hdrH) + 10px); left:14px; padding:8px 12px 7px; min-width:242px;
+    border:1px solid rgba(56,189,248,.55);
+    box-shadow:0 10px 30px rgba(0,10,25,.5), 0 0 14px rgba(56,189,248,.16), inset 0 1px 0 rgba(170,225,255,.16); }
   #telemetry .hd { font-size:10px; letter-spacing:.22em; color:#6fd3ff;
-    border-bottom:1px solid rgba(96,190,255,.25); padding-bottom:6px; margin-bottom:7px;
+    border-bottom:1px solid rgba(96,190,255,.25); padding-bottom:5px; margin-bottom:5px;
     display:flex; justify-content:space-between; }
   #telemetry .hd .live { color:#3dff8e; }
-  #telemetry .row { display:flex; justify-content:space-between; gap:18px; font-size:12.5px; line-height:1.72; }
+  #telemetry .row { display:flex; justify-content:space-between; gap:18px; font-size:12px; line-height:1.5; }
   #telemetry .k { color:#7fa8c9; letter-spacing:.08em; }
   #telemetry .v { color:#eaf7ff; font-weight:700; }
   #telemetry .v em { font-style:normal; color:#6fd3ff; font-size:10.5px; margin-left:3px; }
@@ -43,6 +47,17 @@
   #minimapBox { padding:10px 12px 8px; }
   #minimapBox .hd { font-size:10px; letter-spacing:.22em; color:#6fd3ff; margin-bottom:6px; display:flex; justify-content:space-between; }
   #minimap { display:block; width:224px; height:224px; }
+  /* HUD frame harmonisation (DIRECTION A): the right-column panels and the
+     telemetry panel get a thinner glowing accent border + corner ticks —
+     frame only; minimap/balance internals untouched */
+  #minimapBox, #balanceBox { border:1px solid rgba(56,189,248,.5);
+    box-shadow:0 12px 36px rgba(0,10,25,.5), 0 0 12px rgba(56,189,248,.14), inset 0 1px 0 rgba(170,225,255,.16); }
+  #minimapBox::before, #balanceBox::before, #telemetry::before { content:''; position:absolute;
+    top:-1px; left:-1px; width:13px; height:13px; pointer-events:none;
+    border-top:2px solid #6fd3ff; border-left:2px solid #6fd3ff; border-top-left-radius:11px; }
+  #minimapBox::after, #balanceBox::after, #telemetry::after { content:''; position:absolute;
+    bottom:-1px; right:-1px; width:13px; height:13px; pointer-events:none;
+    border-bottom:2px solid #6fd3ff; border-right:2px solid #6fd3ff; border-bottom-right-radius:11px; }
   /* charts, bottom-left */
   #console { left:14px; right:auto; bottom:14px; padding:12px 14px 10px;
     display:flex; gap:10px; align-items:stretch;
@@ -54,26 +69,19 @@
      charts out — cells now sit on a mostly-opaque navy gradient so chart
      lines, lidar points and labels stay legible; scoped to #console only,
      the history drawer keeps its own look */
-  #console .cell { flex:0 0 268px; min-width:0;
+  /* DIRECTION A (Sinh): the console is now a cluster of round HUD gauges
+     (COMPASS anchor + SOG + ROT + MOTOR) — the live trend line charts moved
+     to the history drawer, which is their designated home now; the cells
+     keep the deep-blue glass language of 4cc137a */
+  #console .cell { flex:0 0 auto; min-width:0;
+    display:flex; align-items:center; justify-content:center;
     background:linear-gradient(180deg, rgba(7,34,58,.88), rgba(4,22,40,.92));
-    border:1px solid rgba(56,189,248,.35);
-    border-radius:9px; padding:8px 10px 6px;
+    border:1px solid rgba(56,189,248,.35); border-top:2px solid rgba(111,211,255,.5);
+    border-radius:9px; padding:8px 9px;
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
-  #console .dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin:0 4px 1px 0; }
-  #console .cell.compassCell { flex:0 0 128px; text-align:center; }
-  #console .hd { font-size:9px; letter-spacing:.1em; color:#6fd3ff; display:flex; justify-content:space-between; margin-bottom:4px; white-space:nowrap; }
-  #console .hd b { color:#eaf7ff; font-size:12.5px; letter-spacing:0; }
-  #console .cell { border-top:2px solid var(--ac, rgba(111,211,255,.5)); }
-  #console .tt { display:inline-flex; align-items:center; gap:6px; }
-  #console .ic { display:inline-flex; align-items:center; justify-content:center;
-    width:21px; height:21px; border-radius:6px; border:1px solid; flex:0 0 auto; }
-  #console .ic svg { width:14px; height:14px; }
-  .chart { display:block; width:100%; height:64px; }
-  /* lidar 360 scan cell in the console stack + stored scan in history */
-  #console .cell.scanCell { flex:0 0 236px; }
-  .scanCanvas { display:block; width:100%; aspect-ratio:1/1; }
-  .scanFt { font-size:10px; color:#9fc6d8; margin-top:4px; letter-spacing:.03em;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #console .cell.compassCell { border-color:rgba(111,211,255,.6);
+    box-shadow:0 0 18px rgba(56,189,248,.28), inset 0 0 12px rgba(56,189,248,.08); }
+  .gauge { display:block; width:118px; height:118px; }
   .histScanCanvas { display:block; width:min(400px,100%); aspect-ratio:1/1; margin:0 auto; }
   .histScanFt { font-size:11px; color:#9fc6d8; margin-top:6px; text-align:center; }
   .histScanFt.err { color:#ffd9d4; }
@@ -252,21 +260,17 @@
 </div>
 
 <div class="hud" id="console">
-  <div class="cell" style="--ac:#ffd94d">
-    <div class="hd"><span class="tt"><span class="ic" style="color:#ffd94d;background:#ffd94d22;border-color:#ffd94d55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8z" fill="currentColor" stroke="none"/></svg></span>HDG <i class="dot" style="background:#ffd94d"></i> COG <i class="dot" style="background:#3dff8e"></i> · °</span><b id="cHdgV">--</b></div>
-    <canvas class="chart" id="cHdg" width="840" height="132"></canvas>
-  </div>
-  <div class="cell" style="--ac:#e08fff">
-    <div class="hd"><span class="tt"><span class="ic" style="color:#e08fff;background:#e08fff22;border-color:#e08fff55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12a8.5 8.5 0 1 1-2.5-6"/><path d="M21 3.5V8h-4.5"/></svg></span>ROT · °/min</span><b id="cRotV">--</b></div>
-    <canvas class="chart" id="cRot" width="840" height="132"></canvas>
-  </div>
-  <div class="cell" style="--ac:#3dff8e">
-    <div class="hd"><span class="tt"><span class="ic" style="color:#3dff8e;background:#3dff8e22;border-color:#3dff8e55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1"/></svg></span>MOTOR · %</span><b id="cMotorV">--</b></div>
-    <canvas class="chart" id="cMotor" width="840" height="132"></canvas>
-  </div>
   <div class="cell compassCell">
-    <div class="hd"><span class="tt"><span class="ic" style="color:#6fd3ff;background:#6fd3ff22;border-color:#6fd3ff55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8z" fill="currentColor" stroke="none"/></svg></span>COMPASS</span></div>
     <canvas id="compass" width="316" height="316"></canvas>
+  </div>
+  <div class="cell">
+    <canvas class="gauge" id="gSog" width="236" height="236"></canvas>
+  </div>
+  <div class="cell">
+    <canvas class="gauge" id="gRot" width="236" height="236"></canvas>
+  </div>
+  <div class="cell">
+    <canvas class="gauge" id="gMotor" width="236" height="236"></canvas>
   </div>
 </div>
 
@@ -1380,7 +1384,7 @@ try {
    at ~1 Hz to the same EMQX broker the lidar firmware already uses
    (the board posts to :8883/TLS; the page subscribes over WSS :8084).
    While the feed is fresh (< 6 s) the page mirrors the real model:
-   telemetry, compass, minimap, HDG/ROT charts and the 3D ship's
+   telemetry, compass, minimap, the console gauges and the 3D ship's
    heading + position all go real. When the feed stops, the built-in
    simulation quietly takes over again so the stand never goes blank. */
 const LIVE = { on: false, x: 0, y: 0, hdg: 0, rot: 0, cog: 0, sogKn: 0,
@@ -2009,10 +2013,16 @@ const cp = document.getElementById('compass').getContext('2d');
 function drawCompass(windDir) {
   const C = 158, R = 148, cx = C, cy = C;
   cp.clearRect(0, 0, 316, 316);
-  cp.fillStyle = 'rgba(4,24,44,0.92)';
+  cp.fillStyle = 'rgba(4,24,44,0.94)';
   cp.beginPath(); cp.arc(cx, cy, C - 2, 0, Math.PI * 2); cp.fill();
-  cp.strokeStyle = 'rgba(96,190,255,0.5)'; cp.lineWidth = 2;
-  cp.beginPath(); cp.arc(cx, cy, C - 3, 0, Math.PI * 2); cp.stroke();
+  /* glowing cyan rim (DIRECTION A): the compass is the cluster's anchor gauge */
+  cp.save();
+  cp.shadowColor = 'rgba(56,189,248,0.75)'; cp.shadowBlur = 16;
+  cp.strokeStyle = 'rgba(111,211,255,0.95)'; cp.lineWidth = 3;
+  cp.beginPath(); cp.arc(cx, cy, C - 4, 0, Math.PI * 2); cp.stroke();
+  cp.restore();
+  cp.strokeStyle = 'rgba(96,190,255,0.28)'; cp.lineWidth = 1.2;
+  cp.beginPath(); cp.arc(cx, cy, C - 14, 0, Math.PI * 2); cp.stroke();
   for (let d = 0; d < 360; d += 10) {
     const a = d * Math.PI / 180, big = d % 30 === 0;
     const r1 = R - (big ? 16 : 9);
@@ -2023,7 +2033,7 @@ function drawCompass(windDir) {
     cp.stroke();
   }
   cp.font = 'bold 21px monospace'; cp.textAlign = 'center'; cp.textBaseline = 'middle';
-  cp.fillStyle = '#ff5347'; cp.fillText('N', cx, cy - R + 32);
+  cp.fillStyle = '#53f2ff'; cp.fillText('N', cx, cy - R + 32);
   cp.fillStyle = '#cfeaff';
   cp.fillText('E', cx + R - 32, cy); cp.fillText('S', cx, cy + R - 32); cp.fillText('W', cx - R + 32, cy);
   /* wind arrow (points where wind blows FROM, cyan) */
@@ -2053,45 +2063,145 @@ function drawCompass(windDir) {
   cp.textAlign = 'left'; cp.textBaseline = 'alphabetic';
 }
 
-/* ============ charts ============ */
-function makeChart(id, colors) {
-  const ctx = document.getElementById(id).getContext('2d');
-  return { ctx, lines: colors.map(c => ({ color: c, data: [] })) };
+/* ============ console gauges — DIRECTION A (Sinh): round HUD instruments
+   replacing the bottom-left line charts (trend data now lives in the history
+   drawer). Hand-rolled canvas, same as the compass. Value sources are the
+   exact ones the removed charts/HUD used, redrawn at the same 0.45 s cadence:
+   SOG <- sogKn (the very number #tSog displays), ROT <- rotNow,
+   MOTOR <- window.__motorLive (last ESP32 report, held between packets;
+   nothing reported yet -> rendered as 0 %). Palette: navy + cyan glow,
+   amber reserved for needles; motor arc keeps the popup's green/orange. */
+function gaugeShell(g, S) {
+  const c = S / 2, R = S / 2 - 8;
+  g.clearRect(0, 0, S, S);
+  g.save();
+  g.shadowColor = 'rgba(56,189,248,0.5)'; g.shadowBlur = 15;
+  g.fillStyle = 'rgba(4,24,44,0.94)';
+  g.beginPath(); g.arc(c, c, R, 0, Math.PI * 2); g.fill();
+  g.restore();
+  g.strokeStyle = 'rgba(111,211,255,0.9)'; g.lineWidth = 2.4;
+  g.beginPath(); g.arc(c, c, R, 0, Math.PI * 2); g.stroke();
+  g.strokeStyle = 'rgba(96,190,255,0.22)'; g.lineWidth = 1;
+  g.beginPath(); g.arc(c, c, R - 9, 0, Math.PI * 2); g.stroke();
+  return [c, R];
 }
-function pushChart(ch, vals) {
-  ch.lines.forEach((L, i) => { L.data.push(vals[i]); if (L.data.length > 110) L.data.shift(); });
+/* point on the dial at compass-style angle aDeg (0 = top, clockwise) */
+function gaugePt(c, aDeg, r) {
+  const a = aDeg * Math.PI / 180;
+  return [c + Math.sin(a) * r, c - Math.cos(a) * r];
 }
-const chHdgCog = makeChart('cHdg', ['#ffd94d', '#3dff8e']);
-const chRot = makeChart('cRot', ['#e08fff']);
-const chMotor = makeChart('cMotor', ['#3dff8e']);
-function drawChart(ch, min, max, opts = {}) {
-  const { ctx } = ch, W = 840, H = 132;
-  ctx.clearRect(0, 0, W, H);
-  /* no plot-area fill: the chart background is fully transparent (Sinh) —
-     only grid lines, labels and the data lines are drawn, over the sea */
-  ctx.strokeStyle = 'rgba(96,190,255,0.18)'; ctx.lineWidth = 1;
-  for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(0, H * i / 4); ctx.lineTo(W, H * i / 4); ctx.stroke(); }
-  for (let i = 1; i < 6; i++) { ctx.beginPath(); ctx.moveTo(W * i / 6, 0); ctx.lineTo(W * i / 6, H); ctx.stroke(); }
-  if (opts.zero && min < 0 && max > 0) {
-    const zy = H - (0 - min) / (max - min) * (H - 12) - 6;
-    ctx.strokeStyle = 'rgba(207,234,255,0.45)'; ctx.lineWidth = 1.4;
-    ctx.beginPath(); ctx.moveTo(0, zy); ctx.lineTo(W, zy); ctx.stroke();
-  }
-  ctx.fillStyle = 'rgba(127,168,201,0.9)'; ctx.font = '14px monospace';
-  ctx.fillText(max.toFixed(0), 6, 16); ctx.fillText(min.toFixed(0), 6, H - 5);
-  for (const L of ch.lines) {
-    if (L.data.length < 2) continue;
-    ctx.beginPath();
-    L.data.forEach((v, i) => {
-      const x = i / 109 * W, y = H - (v - min) / (max - min) * (H - 12) - 6;
-      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-    });
-    ctx.strokeStyle = L.color; ctx.lineWidth = 2.3; ctx.stroke();
-    if (opts.fill && ch.lines.length === 1) {
-      ctx.lineTo((L.data.length - 1) / 109 * W, H); ctx.lineTo(0, H); ctx.closePath();
-      ctx.fillStyle = opts.fill; ctx.fill();
+function gaugeNeedle(g, c, aDeg, len, tail) {
+  const [x, y] = gaugePt(c, aDeg, len), [tx, ty] = gaugePt(c, aDeg + 180, tail);
+  g.save();
+  g.shadowColor = 'rgba(255,217,77,0.55)'; g.shadowBlur = 7;
+  g.strokeStyle = '#ffd94d'; g.lineWidth = 4.5; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(tx, ty); g.lineTo(x, y); g.stroke();
+  g.restore();
+  g.fillStyle = '#ffd94d';
+  g.beginPath(); g.arc(c, c, 6, 0, Math.PI * 2); g.fill();
+  g.fillStyle = 'rgba(4,24,44,0.9)';
+  g.beginPath(); g.arc(c, c, 2.4, 0, Math.PI * 2); g.fill();
+}
+/* ticks: [{a, big, label}] with a in compass-style degrees */
+function gaugeTicks(g, c, R, ticks) {
+  for (const t of ticks) {
+    const [x1, y1] = gaugePt(c, t.a, R - 11);
+    const [x2, y2] = gaugePt(c, t.a, R - (t.big ? 25 : 18));
+    g.strokeStyle = t.big ? 'rgba(207,234,255,0.85)' : 'rgba(160,215,255,0.45)';
+    g.lineWidth = t.big ? 2.4 : 1.3;
+    g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
+    if (t.label != null) {
+      const [lx, ly] = gaugePt(c, t.a, R - 40);
+      g.fillStyle = '#9fc6d8'; g.font = 'bold 14.5px monospace';
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(t.label, lx, ly);
     }
   }
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+}
+
+const gSogCtx = document.getElementById('gSog').getContext('2d');
+function drawSogGauge() {
+  const S = 236, [c, R] = gaugeShell(gSogCtx, S);
+  const v = Math.max(0, Math.min(12, sogKn || 0));
+  const aOf = x => -135 + x / 12 * 270;
+  const ticks = [];
+  for (let k = 0; k <= 12; k++) ticks.push({ a: aOf(k), big: k % 2 === 0, label: k % 2 === 0 ? String(k) : null });
+  gaugeTicks(gSogCtx, c, R, ticks);
+  gaugeNeedle(gSogCtx, c, aOf(v), R - 50, 15);
+  gSogCtx.textAlign = 'center'; gSogCtx.textBaseline = 'middle';
+  gSogCtx.fillStyle = '#eaf7ff'; gSogCtx.font = 'bold 27px monospace';
+  gSogCtx.fillText(v.toFixed(1), c, c + R * 0.42);
+  gSogCtx.fillStyle = '#7fa8c9'; gSogCtx.font = '12px monospace';
+  gSogCtx.fillText('SOG · kn', c, c + R * 0.63);
+  gSogCtx.textAlign = 'left'; gSogCtx.textBaseline = 'alphabetic';
+}
+
+const gRotCtx = document.getElementById('gRot').getContext('2d');
+function drawRotGauge() {
+  const S = 236, [c, R] = gaugeShell(gRotCtx, S);
+  const v = Math.max(-60, Math.min(60, rotNow || 0));
+  const aOf = x => x / 60 * 120;
+  const ticks = [];
+  for (let x = -60; x <= 60; x += 10) ticks.push({ a: aOf(x), big: x % 20 === 0, label: x % 20 === 0 ? (x > 0 ? '+' + x : '' + x) : null });
+  gaugeTicks(gRotCtx, c, R, ticks);
+  /* zero mark picked out in bright cyan */
+  const [zx1, zy1] = gaugePt(c, 0, R - 11), [zx2, zy2] = gaugePt(c, 0, R - 29);
+  gRotCtx.strokeStyle = '#53f2ff'; gRotCtx.lineWidth = 3;
+  gRotCtx.beginPath(); gRotCtx.moveTo(zx1, zy1); gRotCtx.lineTo(zx2, zy2); gRotCtx.stroke();
+  gaugeNeedle(gRotCtx, c, aOf(v), R - 50, 15);
+  const rv = Math.round(v);
+  gRotCtx.textAlign = 'center'; gRotCtx.textBaseline = 'middle';
+  gRotCtx.fillStyle = '#eaf7ff'; gRotCtx.font = 'bold 27px monospace';
+  gRotCtx.fillText((rv > 0 ? '+' : '') + rv, c, c + R * 0.42);
+  gRotCtx.fillStyle = '#7fa8c9'; gRotCtx.font = '12px monospace';
+  gRotCtx.fillText('ROT · °/min', c, c + R * 0.63);
+  gRotCtx.textAlign = 'left'; gRotCtx.textBaseline = 'alphabetic';
+}
+
+const gMotCtx = document.getElementById('gMotor').getContext('2d');
+function drawMotorGauge() {
+  const S = 236, [c, R] = gaugeShell(gMotCtx, S);
+  const raw = window.__motorLive;
+  const v = raw == null ? 0 : Math.max(-100, Math.min(100, raw));
+  const aOf = x => x / 100 * 135;               /* compass-style: 0 at the top */
+  const arcR = R - 17, rad = a => (a - 90) * Math.PI / 180;
+  /* track */
+  gMotCtx.strokeStyle = 'rgba(96,190,255,0.18)'; gMotCtx.lineWidth = 13; gMotCtx.lineCap = 'round';
+  gMotCtx.beginPath(); gMotCtx.arc(c, c, arcR, rad(aOf(-100)), rad(aOf(100))); gMotCtx.stroke();
+  /* scale ticks; zero in bright cyan */
+  for (const x of [-100, -50, 0, 50, 100]) {
+    const [x1, y1] = gaugePt(c, aOf(x), arcR - 12);
+    const [x2, y2] = gaugePt(c, aOf(x), arcR - 20);
+    gMotCtx.strokeStyle = x === 0 ? '#53f2ff' : 'rgba(160,215,255,0.5)';
+    gMotCtx.lineWidth = x === 0 ? 2.6 : 1.6;
+    gMotCtx.beginPath(); gMotCtx.moveTo(x1, y1); gMotCtx.lineTo(x2, y2); gMotCtx.stroke();
+  }
+  gMotCtx.fillStyle = '#7fa8c9'; gMotCtx.font = 'bold 12.5px monospace';
+  gMotCtx.textAlign = 'center'; gMotCtx.textBaseline = 'middle';
+  const [lx1, ly1] = gaugePt(c, aOf(-100), arcR - 36); gMotCtx.fillText('-100', lx1, ly1);
+  const [lx2, ly2] = gaugePt(c, aOf(100), arcR - 36); gMotCtx.fillText('+100', lx2, ly2);
+  /* filled arc grows from zero toward the value (popup colours) */
+  if (v !== 0) {
+    gMotCtx.save();
+    gMotCtx.strokeStyle = v > 0 ? '#3dff8e' : '#ff9d5c';
+    gMotCtx.shadowColor = v > 0 ? 'rgba(61,255,142,0.55)' : 'rgba(255,157,92,0.55)';
+    gMotCtx.shadowBlur = 10; gMotCtx.lineWidth = 13; gMotCtx.lineCap = 'round';
+    gMotCtx.beginPath(); gMotCtx.arc(c, c, arcR, rad(Math.min(0, aOf(v))), rad(Math.max(0, aOf(v)))); gMotCtx.stroke();
+    gMotCtx.restore();
+  }
+  /* zero cap dot */
+  const [zx, zy] = gaugePt(c, 0, arcR);
+  gMotCtx.fillStyle = '#53f2ff';
+  gMotCtx.beginPath(); gMotCtx.arc(zx, zy, 3.4, 0, Math.PI * 2); gMotCtx.fill();
+  /* digital value */
+  const mv = Math.round(v);
+  gMotCtx.fillStyle = (raw == null || mv === 0) ? '#9fc6d8' : (mv > 0 ? '#3dff8e' : '#ff9d5c');
+  gMotCtx.font = 'bold 30px monospace';
+  gMotCtx.fillText((mv > 0 ? '+' : '') + mv + '%', c, c + 4);
+  gMotCtx.fillStyle = '#7fa8c9'; gMotCtx.font = '12px monospace';
+  gMotCtx.fillText('MOTOR', c, c + R * 0.34);
+  gMotCtx.textAlign = 'left'; gMotCtx.textBaseline = 'alphabetic';
 }
 
 /* ============ HUD ============ */
@@ -2129,8 +2239,8 @@ function updateHud(t) {
     el('tLon').textContent = LIVE.y.toFixed(2) + ' m';
     el('tRng').innerHTML = Math.hypot(LIVE.x, LIVE.y).toFixed(2) + '<em>m · GỐC</em>';
   }
-  el('cHdgV').textContent = headingDeg.toFixed(0) + ' / ' + cogDeg.toFixed(0);
-  el('cRotV').textContent = (rotNow >= 0 ? '+' : '') + rotNow.toFixed(0);
+  /* (the old console header readouts cHdgV/cRotV went with the line charts;
+     the gauges read headingDeg / rotNow / sogKn directly) */
   /* ship balance: live heel read straight from the wave-driven tilt */
   const heelDeg = Math.abs(THREE.MathUtils.radToDeg(tilt.rotation.x));
   const hTxt = heelDeg.toFixed(1) + '°';
@@ -2325,14 +2435,9 @@ function animate() {
     if (t - lastHud > 0.15) { lastHud = t; updateHud(t); drawMinimap(); }
     if (t - lastChart > 0.45) {
       lastChart = t;
-      pushChart(chHdgCog, [headingDeg, cogDeg]);
-      pushChart(chRot, [rotNow]);
-      /* motor: last value reported by the ESP32, held between packets;
-         NaN until the first report so the axis renders empty, not faked */
-      pushChart(chMotor, [window.__motorLive == null ? NaN : window.__motorLive]);
-      drawChart(chHdgCog, 0, 360);
-      drawChart(chRot, -40, 40, { zero: true });
-      drawChart(chMotor, -100, 100, { zero: true });
+      drawSogGauge();
+      drawRotGauge();
+      drawMotorGauge();
     }
   }
   controls.update();
