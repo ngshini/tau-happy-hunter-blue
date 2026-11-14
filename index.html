@@ -57,16 +57,15 @@
   #minimapBox::after, #balanceBox::after { content:''; position:absolute;
     bottom:-1px; right:-1px; width:13px; height:13px; pointer-events:none;
     border-bottom:2px solid #6fd3ff; border-right:2px solid #6fd3ff; border-bottom-right-radius:11px; }
-  /* gauges split to the two sides (Sinh: "đưa 2 biểu đồ của hàng đó qua
-     2 bên") — the bar spans the full bottom edge: COMPASS + SOG hug the
-     left, ROT + MOTOR hug the right (ROT carries margin-left:auto), the
-     middle stays empty. The bar itself takes no pointer events, so the
-     gap lets orbit drags through; only the cells are solid. Bottom
-     offset, size, cells and data logic unchanged. */
-  #console { left:0; right:0; bottom:14px;
+  /* gauges, bottom-centre (Sinh: "đưa này vô giữa"; then, after a brief
+     two-side split he reversed: "cụm đồng hồ cứ để giữa, đưa thêm 2
+     biểu đồ ở 2 bên cụm đồng hồ") — ONE centred row of six round
+     gauges: WIND · COMPASS · SOG · ROT · MOTOR · DEPTH, the two new
+     dials flanking the original four. Bottom offset, cell size and
+     data logic unchanged; only the horizontal anchor + row content. */
+  #console { left:50%; right:auto; bottom:14px; transform:translateX(-50%);
     padding:12px 14px 10px;
     display:flex; gap:10px; align-items:stretch;
-    pointer-events:none;
     /* transparent chart block (Sinh): the graphs float straight on the sea —
        no panel fill, border, blur or shadow; cells keep only hairlines */
     background:transparent; border-color:transparent; box-shadow:none;
@@ -87,11 +86,8 @@
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
   #console .cell.compassCell { border-color:rgba(111,211,255,.6);
     box-shadow:0 0 18px rgba(56,189,248,.28), inset 0 0 12px rgba(56,189,248,.08); }
-  #console .cell { pointer-events:auto; }
-  /* the split: ROT pushes itself (and MOTOR behind it) to the right edge */
-  #console .cell.rotCell { margin-left:auto; }
-  /* the MOTOR gauge doubles as a control (Sinh): drag its ring to set
-     the motor — pointer cursor + no touch scrolling on this cell only */
+  /* the MOTOR gauge doubles as a control (Sinh): drag anywhere on its
+     disc to set the motor — pointer cursor + no touch scrolling here */
   #console .cell.motorCell { cursor:pointer; touch-action:none; }
   #console .cell.motorCell.dragging { cursor:grabbing; }
   .gauge { display:block; width:118px; height:118px; }
@@ -114,6 +110,8 @@
   #capSogV { min-width:7ch; }
   #capRotV { min-width:10ch; }
   #capMotV { min-width:9ch; }
+  #capWindV { min-width:12ch; }
+  #capDepthV { min-width:6ch; }
   .histScanCanvas { display:block; width:min(400px,100%); aspect-ratio:1/1; margin:0 auto; }
   .histScanFt { font-size:11px; color:#9fc6d8; margin-top:6px; text-align:center; }
   .histScanFt.err { color:#ffd9d4; }
@@ -284,12 +282,15 @@
   #loading .spin { width:52px; height:52px; border-radius:50%;
     border:4px solid rgba(111,211,255,.25); border-top-color:#6fd3ff; animation:sp 0.9s linear infinite; }
   @keyframes sp { to { transform:rotate(360deg); } }
-  /* mid widths (821–1080px): the gauge captions widened the console, so
+  /* mid widths (821–1354px): the gauge captions widened the console, so
      in this band it would reach the right column sooner than the
      pre-caption layout did; compact the console only (smaller dials,
      tighter captions and gaps) to restore roughly the old clearance.
-     The right column itself is untouched. */
-  @media (min-width:821px) and (max-width:1080px) {
+     The band now runs to 1354px (was 1080px) because the row carries
+     six gauges: at full size it measures ~1216px, so below ~1355px the
+     compact dials are what keep the centred row inside the screen and
+     clear of the right column. The right column itself is untouched. */
+  @media (min-width:821px) and (max-width:1354px) {
     #console { gap:6px; padding:10px 8px 8px; }
     #console .cell { padding:7px 7px; }
     .gauge { width:104px; height:104px; }
@@ -301,17 +302,25 @@
     #console .gcap { flex-direction:column; align-items:center; gap:1px; margin-top:6px; }
     #console .gcapSep { display:none; }
   }
-  /* collision guard for the split console: the right pair now sits
-     permanently under the right column, whose bottom edge hangs at
-     ~593px from the top, while the console rises ~184px from the
-     bottom — in short windows (under ~791px tall) the two would meet.
-     In that band the split is dropped and all four gauges regroup as
-     one cluster docked left (the pre-split behaviour), so ROT/MOTOR
-     never slide under the SHIP BALANCE card. Taller windows — the
-     1440x900 exhibition screen included — always split. */
-  @media (min-width:821px) and (max-height:791px) {
-    #console { right:auto; }
-    #console .cell.rotCell { margin-left:0; }
+  /* collision guard for the centred console (the f8b2a94 guard,
+     extended for six gauges): the right column hangs 511px down from
+     the top (its bottom edge sits at ~593px) while the console rises
+     ~184px from the bottom, so the two can only meet in short windows
+     (under ~791px tall); and with six cells the centred row reaches
+     the column at any width up to ~1743px (full size) — previously
+     ~1354px with four. In that corner band the console takes the
+     compact treatment above AND keeps its original left dock
+     (left:14px, no transform) instead of sliding under the column.
+     Wider or taller windows always centre. */
+  @media (min-width:821px) and (max-width:1743px) and (max-height:790px) {
+    #console { left:14px; transform:none; gap:6px; padding:10px 8px 8px; }
+    #console .cell { padding:7px 7px; }
+    .gauge { width:104px; height:104px; }
+    #compass { width:104px; height:104px; }
+    .gcap { font-size:10.5px; letter-spacing:.06em; margin-top:5px; }
+    .gcapV { font-size:11.5px; }
+    #console .gcap { flex-direction:column; align-items:center; gap:1px; margin-top:6px; }
+    #console .gcapSep { display:none; }
   }
   @media (max-width:820px) {
     :root { --hdrH:54px; }
@@ -465,6 +474,10 @@
 </div>
 
 <div class="hud" id="console">
+  <div class="cell">
+    <canvas class="gauge" id="gWind" width="236" height="236"></canvas>
+    <div class="gcap"><span class="gcapL">GIÓ</span><span class="gcapSep">—</span><b class="gcapV" id="capWindV">—</b></div>
+  </div>
   <div class="cell compassCell">
     <canvas id="compass" width="316" height="316"></canvas>
     <div class="gcap"><span class="gcapL">HƯỚNG TÀU · LA BÀN</span><span class="gcapSep">—</span><b class="gcapV" id="capHdgV">—</b></div>
@@ -473,13 +486,17 @@
     <canvas class="gauge" id="gSog" width="236" height="236"></canvas>
     <div class="gcap"><span class="gcapL">TỐC ĐỘ TÀU</span><span class="gcapSep">—</span><b class="gcapV" id="capSogV">—</b></div>
   </div>
-  <div class="cell rotCell">
+  <div class="cell">
     <canvas class="gauge" id="gRot" width="236" height="236"></canvas>
     <div class="gcap"><span class="gcapL">TỐC ĐỘ XOAY</span><span class="gcapSep">—</span><b class="gcapV" id="capRotV">—</b></div>
   </div>
   <div class="cell motorCell" title="Kéo để điều khiển động cơ">
     <canvas class="gauge" id="gMotor" width="236" height="236"></canvas>
     <div class="gcap"><span class="gcapL">ĐỘNG CƠ DC</span><span class="gcapSep">—</span><b class="gcapV" id="capMotV">—</b></div>
+  </div>
+  <div class="cell">
+    <canvas class="gauge" id="gDepth" width="236" height="236"></canvas>
+    <div class="gcap"><span class="gcapL">ĐỘ SÂU</span><span class="gcapSep">—</span><b class="gcapV" id="capDepthV">—</b></div>
   </div>
 </div>
 
@@ -1632,7 +1649,7 @@ try {
 
 /* ============ navigation simulation ============ */
 const LAT0 = 20.8650, LON0 = 106.6840, M_PER_UNIT = 15;
-let u = 0, sailing = true, headingDeg = 0, sogKn = 0, windNow = 13, foamFade = 0;
+let u = 0, sailing = true, headingDeg = 0, sogKn = 0, windNow = 13, windDirNow = 205, depthNow = 21, foamFade = 0;
 let cogDeg = 0, rotNow = 0, xteNow = 0, stwNow = 0, prevHeading = 0;
 const LOOP_SEC = 170;
 const shipPos = new THREE.Vector3(), prevPos = new THREE.Vector3();
@@ -2379,6 +2396,48 @@ function gaugeTicks(g, c, R, ticks) {
   g.textAlign = 'left'; g.textBaseline = 'alphabetic';
 }
 
+/* WIND + DEPTH gauges flank the cluster (Sinh). Both read the same
+   simulated-environment snapshot the NAV telemetry panel renders —
+   updateHud assigns windNow / windDirNow / depthNow from the very s =
+   sensors(t) object behind the WIND / DEPTH panel rows, in SIM and
+   LIVE alike (the ESP32 topics carry neither) — so dial, caption and
+   panel can never disagree. */
+const gWindCtx = document.getElementById('gWind').getContext('2d');
+function drawWindGauge() {
+  const S = 236, [c, R] = gaugeShell(gWindCtx, S);
+  const dir = ((windDirNow % 360) + 360) % 360;
+  const spd = Math.max(0, windNow || 0);
+  const ticks = [];
+  for (let d = 0; d < 360; d += 30) ticks.push({ a: d, big: d % 90 === 0, label: d % 90 === 0 ? 'NESW'[d / 90] : null });
+  gaugeTicks(gWindCtx, c, R, ticks);
+  /* wind arrow: points where the wind blows FROM — the same convention
+     as the cyan arrow on the compass rose — drawn as a cyan shaft with
+     a two-barb head at the direction point */
+  const ux = Math.sin(dir * Math.PI / 180), uy = -Math.cos(dir * Math.PI / 180);
+  const tipX = c + ux * (R - 52), tipY = c + uy * (R - 52);
+  const tailX = c - ux * 26, tailY = c - uy * 26;
+  gWindCtx.save();
+  gWindCtx.shadowColor = 'rgba(83,242,255,0.55)'; gWindCtx.shadowBlur = 7;
+  gWindCtx.strokeStyle = '#53f2ff'; gWindCtx.lineWidth = 4; gWindCtx.lineCap = 'round';
+  gWindCtx.beginPath(); gWindCtx.moveTo(tailX, tailY); gWindCtx.lineTo(tipX, tipY); gWindCtx.stroke();
+  for (const sgn of [-1, 1]) {
+    gWindCtx.beginPath(); gWindCtx.moveTo(tipX, tipY);
+    gWindCtx.lineTo(tipX - ux * 15 + sgn * uy * 7, tipY - uy * 15 - sgn * ux * 7); gWindCtx.stroke();
+  }
+  gWindCtx.restore();
+  gWindCtx.fillStyle = '#53f2ff';
+  gWindCtx.beginPath(); gWindCtx.arc(c, c, 4.5, 0, Math.PI * 2); gWindCtx.fill();
+  /* digital direction above centre, speed below — SOG layout mirrored */
+  gWindCtx.textAlign = 'center'; gWindCtx.textBaseline = 'middle';
+  gWindCtx.fillStyle = '#53f2ff'; gWindCtx.font = 'bold 17px monospace';
+  gWindCtx.fillText(dir.toFixed(0) + '°', c, c - R * 0.40);
+  gWindCtx.fillStyle = '#eaf7ff'; gWindCtx.font = 'bold 27px monospace';
+  gWindCtx.fillText(spd.toFixed(0), c, c + R * 0.42);
+  gWindCtx.fillStyle = '#7fa8c9'; gWindCtx.font = '12px monospace';
+  gWindCtx.fillText('WIND · kn', c, c + R * 0.63);
+  gWindCtx.textAlign = 'left'; gWindCtx.textBaseline = 'alphabetic';
+}
+
 const gSogCtx = document.getElementById('gSog').getContext('2d');
 function drawSogGauge() {
   const S = 236, [c, R] = gaugeShell(gSogCtx, S);
@@ -2394,6 +2453,25 @@ function drawSogGauge() {
   gSogCtx.fillStyle = '#7fa8c9'; gSogCtx.font = '12px monospace';
   gSogCtx.fillText('SOG · kn', c, c + R * 0.63);
   gSogCtx.textAlign = 'left'; gSogCtx.textBaseline = 'alphabetic';
+}
+
+const gDepthCtx = document.getElementById('gDepth').getContext('2d');
+function drawDepthGauge() {
+  const S = 236, [c, R] = gaugeShell(gDepthCtx, S);
+  /* the page's depth state (sensors()) ranges ~13–29 m; a 0–40 m
+     sounder scale keeps the needle mid-dial with margin both ways */
+  const v = Math.max(0, Math.min(40, depthNow || 0));
+  const aOf = x => -135 + x / 40 * 270;
+  const ticks = [];
+  for (let k = 0; k <= 40; k += 5) ticks.push({ a: aOf(k), big: k % 10 === 0, label: k % 10 === 0 ? String(k) : null });
+  gaugeTicks(gDepthCtx, c, R, ticks);
+  gaugeNeedle(gDepthCtx, c, aOf(v), R - 50, 15);
+  gDepthCtx.textAlign = 'center'; gDepthCtx.textBaseline = 'middle';
+  gDepthCtx.fillStyle = '#eaf7ff'; gDepthCtx.font = 'bold 27px monospace';
+  gDepthCtx.fillText(v.toFixed(1), c, c + R * 0.42);
+  gDepthCtx.fillStyle = '#7fa8c9'; gDepthCtx.font = '12px monospace';
+  gDepthCtx.fillText('DEPTH · m', c, c + R * 0.63);
+  gDepthCtx.textAlign = 'left'; gDepthCtx.textBaseline = 'alphabetic';
 }
 
 const gRotCtx = document.getElementById('gRot').getContext('2d');
@@ -2468,15 +2546,20 @@ function drawMotorGauge() {
 
 /* per-gauge captions under the dials (Sinh): refreshed on the same 0.45 s
    tick as the gauges and formatted from the EXACT variables each dial reads
-   (headingDeg / sogKn / rotNow / window.__motorLive, same clamps), so a
-   caption can never disagree with its dial */
+   (headingDeg / sogKn / rotNow / window.__motorLive / windNow + windDirNow /
+   depthNow, same clamps), so a caption can never disagree with its dial */
 let capEls = null;
 function drawCaptions() {
   if (!capEls) {
     capEls = { h: document.getElementById('capHdgV'), s: document.getElementById('capSogV'),
-               r: document.getElementById('capRotV'), m: document.getElementById('capMotV') };
+               r: document.getElementById('capRotV'), m: document.getElementById('capMotV'),
+               w: document.getElementById('capWindV'), d: document.getElementById('capDepthV') };
     if (!capEls.h) return;
   }
+  /* WIND / DEPTH captions: same globals, same precision as the NAV
+     panel rows (wind toFixed(0) + dir toFixed(0); depth toFixed(1)) */
+  capEls.w.textContent = (windNow || 0).toFixed(0) + ' kn · ' + (((windDirNow % 360) + 360) % 360).toFixed(0) + '°';
+  capEls.d.textContent = (depthNow || 0).toFixed(1) + ' m';
   capEls.h.textContent = headingDeg.toFixed(0) + '°';
   capEls.s.textContent = Math.max(0, Math.min(12, sogKn || 0)).toFixed(1) + ' kn';
   const rv = Math.round(Math.max(-60, Math.min(60, rotNow || 0)));
@@ -2488,19 +2571,27 @@ function drawCaptions() {
 }
 
 /* ============ MOTOR gauge as a control (Sinh: "cũng có thể điều khiển
-   được động cơ qua biểu đồ này") — press/drag around the MOTOR dial's
-   ring (or simply click the arc) sets the motor, through the SAME
-   motorSet the sidebar telegraph uses (5% steps here), so the lever,
-   its % readout and the ESP32 feedback stay in sync on their own. The
-   pointer angle inverts drawMotorGauge's own mapping — compass-style
-   degrees (0 = top, clockwise), angle = value/100*135 — so value =
-   angle/135*100, clamped to the arc ends; a pointer in the bottom
-   dead zone (|angle| > 135) clamps to ±100. While dragging,
-   window.__motorDrag makes the dial + caption show the target; on
-   release the dial returns to the ESP32-confirmed window.__motorLive.
-   Double click / double tap = DỪNG (0%). The cell is a DOM overlay
-   above #scene, so OrbitControls never receives these pointers and
-   the camera stays put while the ring is dragged. */
+   được động cơ qua biểu đồ này"; refined: "kéo vào vòng tròn để chọn
+   được mức quay và mức quay chia làm 5 đơn vị mỗi lần kéo") — the
+   WHOLE disc of the MOTOR cell is the control, through the SAME
+   motorSet the sidebar telegraph uses, so the lever, its % readout
+   and the ESP32 feedback stay in sync on their own. Two gestures:
+   - a plain click / tap selects by ABSOLUTE position: the pointer
+     angle inverts drawMotorGauge's own mapping — compass-style
+     degrees (0 = top, clockwise), angle = value/100*135 — snapped to
+     5%; a tap in the bottom dead zone (|angle| > 135) clamps to ±100.
+   - dragging turns a KNOB with detents: angular travel accumulates
+     from the grab point and the level steps by exactly 5% per 13.5°
+     of sweep, one step at a time — the value can never jump a step
+     or land between multiples of 5 mid-drag. The knob is finer than
+     the dial's own absolute scale (13.5° there = 10%), so a
+     half-dial sweep from 0 lands on +50 and the full −100..+100
+     range takes 540° of knob travel — deliberate fine control.
+   While dragging, window.__motorDrag makes the dial + caption show
+   the target; on release the dial returns to the ESP32-confirmed
+   window.__motorLive. Double click / double tap = DỪNG (0%). The
+   cell is a DOM overlay above #scene, so OrbitControls never
+   receives these pointers and the camera stays put while dragging. */
 try {
   const motCanvas = document.getElementById('gMotor');
   const motCell = motCanvas.closest('.cell');
@@ -2508,12 +2599,20 @@ try {
   let motSentV = null;     /* last value handed to motorSet this drag */
   let motDbl = false;      /* this press is the 2nd of a double tap */
   let motLastUp = 0;
+  let motLastA = null;     /* last raw pointer angle, for knob sweep */
+  let motAcc = 0;          /* swept degrees not yet spent on a step */
+  const MOT_STEP_DEG = 13.5;   /* one 5% detent per 13.5° of sweep */
 
-  function motValueFromEvent(e) {
+  /* raw pointer geometry around the dial centre: compass-style angle
+     (0 = top, clockwise, NOT clamped) + distance from the centre */
+  function motRawAngle(e) {
     const r = motCanvas.getBoundingClientRect();
     const dx = e.clientX - (r.left + r.width / 2);
     const dy = e.clientY - (r.top + r.height / 2);
-    let a = Math.atan2(dx, -dy) * 180 / Math.PI;   /* compass-style deg */
+    return { a: Math.atan2(dx, -dy) * 180 / Math.PI, rad: Math.hypot(dx, dy) };
+  }
+  function motValueFromEvent(e) {
+    let a = motRawAngle(e).a;
     a = Math.max(-135, Math.min(135, a));
     return Math.round((a / 135 * 100) / 5) * 5;
   }
@@ -2531,6 +2630,8 @@ try {
     window.__motorDrag = null;
     motDragV = null;
     motSentV = null;
+    motLastA = null;
+    motAcc = 0;
     motCell.classList.remove('dragging');
     drawMotorGauge();
     drawCaptions();
@@ -2544,12 +2645,19 @@ try {
          press then ends without re-applying the pointer angle */
       motDbl = true;
       motDragV = 0;
+      motLastA = null;
+      motAcc = 0;
       motShow(0);
       motSentV = null;
       motApply(0, true);
     } else {
+      /* the grab itself is the click: absolute position selects the
+         level; the knob sweep then accumulates from this point and
+         this value */
       motDbl = false;
       motDragV = motValueFromEvent(e);
+      motLastA = motRawAngle(e).a;
+      motAcc = 0;
       motShow(motDragV);
       motApply(motDragV, false);
     }
@@ -2557,12 +2665,29 @@ try {
   });
   motCell.addEventListener('pointermove', (e) => {
     if (motDragV === null || motDbl) return;
-    const v = motValueFromEvent(e);
-    if (v !== motDragV) {
-      motDragV = v;
-      motShow(v);
-      motApply(v, false);
+    const g = motRawAngle(e);
+    if (motLastA === null) { motLastA = g.a; return; }
+    if (g.rad < 12) return;   /* on the hub the angle is pure noise */
+    let d = g.a - motLastA;
+    if (d > 180) d -= 360; else if (d < -180) d += 360;   /* unwrap */
+    motLastA = g.a;
+    motAcc += d;
+    /* knob detents: spend the accumulated sweep one exact 5% step per
+       13.5°, applying each step on its own — no skipped steps, no
+       off-step values, however fast the pointer moves */
+    while (motAcc >= MOT_STEP_DEG && motDragV < 100) {
+      motAcc -= MOT_STEP_DEG;
+      motDragV += 5;
+      motShow(motDragV);
+      motApply(motDragV, false);
     }
+    while (motAcc <= -MOT_STEP_DEG && motDragV > -100) {
+      motAcc += MOT_STEP_DEG;
+      motDragV -= 5;
+      motShow(motDragV);
+      motApply(motDragV, false);
+    }
+    if (motDragV === 100 || motDragV === -100) motAcc = 0;  /* no wind-up at the ends */
   });
   const motRelease = () => {
     if (motDragV === null) return;
@@ -2632,7 +2757,7 @@ function updateHud(t) {
     bsEl.style.background = balSt[2]; bsEl.style.borderColor = balSt[3];
     if (balLineMat) balLineMat.color.set(heelDeg <= 3 ? 0x3fe8ef : heelDeg <= 6 ? 0xffd94d : 0xff8a70);
   }
-  sogKn = s.sog; windNow = s.wind; stwNow = s.stw;
+  sogKn = s.sog; windNow = s.wind; windDirNow = s.windDir; depthNow = s.depth; stwNow = s.stw;
   window.__sog = s.sog; window.__hdg = headingDeg; window.__trail = trailPts.length;
   drawCompass(s.windDir);
 }
@@ -2816,9 +2941,11 @@ function animate() {
     if (t - lastHud > 0.15) { lastHud = t; updateHud(t); drawMinimap(); }
     if (t - lastChart > 0.45) {
       lastChart = t;
+      drawWindGauge();
       drawSogGauge();
       drawRotGauge();
       drawMotorGauge();
+      drawDepthGauge();
       drawCaptions();
     }
   }
