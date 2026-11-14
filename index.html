@@ -929,17 +929,21 @@ function enhanceShipMaterials(model) {
     } else m.roughness = rough;
     m.metalness = metal; m.envMapIntensity = env; m.needsUpdate = true;
   }
-  apply('Yellow', makeSurfaceMaps({ seed: 11, base: '#185f9d', light: '#2d7ab8', dark: '#0a3d68', rough: 0.58, roughVar: 0.17, seamsX: 6, seamsY: 4, streaks: 34, rust: true, speckles: 850 }), 0.58, 0.08, 0.5, 0.05);
+  /* livery (Sinh's order 2026-11-14): the blue-painted materials go marine
+     yellow — hull topsides ('Yellow'), superstructure band ('Blue') and the
+     below-waterline band ('Red', deeper amber so the hull keeps its two-tone
+     read). White / grey / dark / red parts keep their colours. */
+  apply('Yellow', makeSurfaceMaps({ seed: 11, base: '#f5a400', light: '#ffc233', dark: '#b97a00', rough: 0.58, roughVar: 0.17, seamsX: 6, seamsY: 4, streaks: 34, rust: true, speckles: 850 }), 0.58, 0.08, 0.5, 0.05);
   apply('Yellow2', makeSurfaceMaps({ seed: 12, base: '#1d6cae', light: '#3584c2', dark: '#0e4777', rough: 0.55, roughVar: 0.16, seamsX: 5, seamsY: 3, streaks: 22, rust: true }), 0.55, 0.08, 0.52);
-  apply('Red', makeSurfaceMaps({ seed: 13, base: '#0a2d52', light: '#174a76', dark: '#030f1e', rough: 0.68, roughVar: 0.18, seamsX: 6, seamsY: 4, streaks: 48, rust: true, speckles: 1100 }), 0.68, 0.06, 0.42, 0.055);
-  apply('Blue', makeSurfaceMaps({ seed: 14, base: '#1a639f', light: '#2f7db9', dark: '#0d406c', rough: 0.52, roughVar: 0.14, seamsX: 4, seamsY: 3, streaks: 12 }), 0.52, 0.08, 0.55);
+  apply('Red', makeSurfaceMaps({ seed: 13, base: '#d98d00', light: '#f0a818', dark: '#8a5a00', rough: 0.68, roughVar: 0.18, seamsX: 6, seamsY: 4, streaks: 48, rust: true, speckles: 1100 }), 0.68, 0.06, 0.42, 0.055);
+  apply('Blue', makeSurfaceMaps({ seed: 14, base: '#f7ac06', light: '#ffc63d', dark: '#c07f00', rough: 0.52, roughVar: 0.14, seamsX: 4, seamsY: 3, streaks: 12 }), 0.52, 0.08, 0.55);
   apply('White', makeSurfaceMaps({ seed: 15, base: '#d8dee0', light: '#f5f7f7', dark: '#a7b2b4', rough: 0.61, roughVar: 0.15, seamsX: 5, seamsY: 4, streaks: 20, speckles: 650 }), 0.61, 0.03, 0.46, 0.035);
   apply('Deck', makeSurfaceMaps({ seed: 16, base: '#4b5954', light: '#68766f', dark: '#222d2a', rough: 0.94, roughVar: 0.10, seamsX: 8, seamsY: 5, streaks: 8, oil: 14, speckles: 1800 }), 0.94, 0.04, 0.30, 0.06);
   apply('DeckDk', makeSurfaceMaps({ seed: 17, base: '#303a3d', light: '#46545a', dark: '#171d20', rough: 0.88, roughVar: 0.12, seamsX: 5, seamsY: 3, streaks: 18, rust: true }), 0.88, 0.10, 0.34);
   apply('Grey', makeSurfaceMaps({ seed: 18, base: '#6f7a7e', light: '#929da1', dark: '#424b4f', rough: 0.50, roughVar: 0.16, seamsX: 3, seamsY: 3, streaks: 16, rust: true }), 0.50, 0.42, 0.62);
   apply('Dark', makeSurfaceMaps({ seed: 19, base: '#22282c', light: '#39434a', dark: '#0b0e10', rough: 0.68, roughVar: 0.14, streaks: 12, rust: true }), 0.68, 0.32, 0.45);
   apply('Black', makeSurfaceMaps({ seed: 20, base: '#14171a', light: '#2b3136', dark: '#050607', rough: 0.62, roughVar: 0.13, streaks: 8 }), 0.62, 0.24, 0.42);
-  apply('FunnelBlue', makeSurfaceMaps({ seed: 21, base: '#081f3d', light: '#143a63', dark: '#020a17', rough: 0.54, roughVar: 0.16, seamsX: 4, seamsY: 4, streaks: 42 }), 0.54, 0.09, 0.5, 0.05);
+  apply('FunnelBlue', makeSurfaceMaps({ seed: 21, base: '#e09c00', light: '#f7b21c', dark: '#96690a', rough: 0.54, roughVar: 0.16, seamsX: 4, seamsY: 4, streaks: 42 }), 0.54, 0.09, 0.5, 0.05);
   apply('Orange', makeSurfaceMaps({ seed: 22, base: '#b5441d', light: '#d76a36', dark: '#67220f', rough: 0.63, roughVar: 0.16, seamsX: 4, seamsY: 2, streaks: 20 }), 0.63, 0.04, 0.44);
   apply('Tire', makeTireMaps(), 0.96, 0.0, 0.22, 0.11);
   apply('RedDk', makeSurfaceMaps({ seed: 23, base: '#5b241c', light: '#7d4032', dark: '#2c100c', rough: 0.62, roughVar: 0.15, streaks: 16, rust: true }), 0.62, 0.10, 0.36);
