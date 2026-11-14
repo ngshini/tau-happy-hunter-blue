@@ -57,12 +57,16 @@
   #minimapBox::after, #balanceBox::after { content:''; position:absolute;
     bottom:-1px; right:-1px; width:13px; height:13px; pointer-events:none;
     border-bottom:2px solid #6fd3ff; border-right:2px solid #6fd3ff; border-bottom-right-radius:11px; }
-  /* charts, bottom-centre (Sinh: "đưa này vô giữa") — the gauge cluster
-     sits in the middle of the bottom edge; bottom offset, size, cells
-     and data logic unchanged, only the horizontal anchor moved */
-  #console { left:50%; right:auto; bottom:14px; transform:translateX(-50%);
+  /* gauges split to the two sides (Sinh: "đưa 2 biểu đồ của hàng đó qua
+     2 bên") — the bar spans the full bottom edge: COMPASS + SOG hug the
+     left, ROT + MOTOR hug the right (ROT carries margin-left:auto), the
+     middle stays empty. The bar itself takes no pointer events, so the
+     gap lets orbit drags through; only the cells are solid. Bottom
+     offset, size, cells and data logic unchanged. */
+  #console { left:0; right:0; bottom:14px;
     padding:12px 14px 10px;
     display:flex; gap:10px; align-items:stretch;
+    pointer-events:none;
     /* transparent chart block (Sinh): the graphs float straight on the sea —
        no panel fill, border, blur or shadow; cells keep only hairlines */
     background:transparent; border-color:transparent; box-shadow:none;
@@ -83,6 +87,13 @@
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
   #console .cell.compassCell { border-color:rgba(111,211,255,.6);
     box-shadow:0 0 18px rgba(56,189,248,.28), inset 0 0 12px rgba(56,189,248,.08); }
+  #console .cell { pointer-events:auto; }
+  /* the split: ROT pushes itself (and MOTOR behind it) to the right edge */
+  #console .cell.rotCell { margin-left:auto; }
+  /* the MOTOR gauge doubles as a control (Sinh): drag its ring to set
+     the motor — pointer cursor + no touch scrolling on this cell only */
+  #console .cell.motorCell { cursor:pointer; touch-action:none; }
+  #console .cell.motorCell.dragging { cursor:grabbing; }
   .gauge { display:block; width:118px; height:118px; }
   /* per-gauge captions (Sinh): one centred line under each dial — muted
      small-caps label + the live value in the dial's own accent colour,
@@ -290,16 +301,17 @@
     #console .gcap { flex-direction:column; align-items:center; gap:1px; margin-top:6px; }
     #console .gcapSep { display:none; }
   }
-  /* collision guard for the centred console: the right column hangs
-     511px down from the top (its bottom edge sits at ~593px) while the
-     console rises ~184px from the bottom, so the two can only meet in
-     short windows (under ~791px tall); and only under ~1354px wide
-     does the centred console's right edge reach the column at all.
-     In that corner band the console keeps its original left dock
-     (left:14px, no transform) instead of sliding under the column.
-     Wider or taller windows always centre. */
-  @media (min-width:821px) and (max-width:1354px) and (max-height:790px) {
-    #console { left:14px; transform:none; }
+  /* collision guard for the split console: the right pair now sits
+     permanently under the right column, whose bottom edge hangs at
+     ~593px from the top, while the console rises ~184px from the
+     bottom — in short windows (under ~791px tall) the two would meet.
+     In that band the split is dropped and all four gauges regroup as
+     one cluster docked left (the pre-split behaviour), so ROT/MOTOR
+     never slide under the SHIP BALANCE card. Taller windows — the
+     1440x900 exhibition screen included — always split. */
+  @media (min-width:821px) and (max-height:791px) {
+    #console { right:auto; }
+    #console .cell.rotCell { margin-left:0; }
   }
   @media (max-width:820px) {
     :root { --hdrH:54px; }
@@ -461,11 +473,11 @@
     <canvas class="gauge" id="gSog" width="236" height="236"></canvas>
     <div class="gcap"><span class="gcapL">TỐC ĐỘ TÀU</span><span class="gcapSep">—</span><b class="gcapV" id="capSogV">—</b></div>
   </div>
-  <div class="cell">
+  <div class="cell rotCell">
     <canvas class="gauge" id="gRot" width="236" height="236"></canvas>
     <div class="gcap"><span class="gcapL">TỐC ĐỘ XOAY</span><span class="gcapSep">—</span><b class="gcapV" id="capRotV">—</b></div>
   </div>
-  <div class="cell">
+  <div class="cell motorCell" title="Kéo để điều khiển động cơ">
     <canvas class="gauge" id="gMotor" width="236" height="236"></canvas>
     <div class="gcap"><span class="gcapL">ĐỘNG CƠ DC</span><span class="gcapSep">—</span><b class="gcapV" id="capMotV">—</b></div>
   </div>
@@ -1757,16 +1769,26 @@ try {
   let teleV = 0;
   function teleRender(v) {
     teleV = v;
-    const idx = TELE_STEPS.indexOf(v);
+    /* handle position interpolates linearly between detents, so a
+       non-detent value (the console MOTOR gauge sets 5% steps) parks
+       the handle between rows; for the lever's own 25% detents the
+       fraction is exact and the handle lands on the same row centres
+       as the old TELE_STEPS.indexOf lookup */
+    const idx = (100 - v) / 25;
     teleHandle.style.transform = 'translate(-50%, ' + (idx * TELE_ROW_H + 1) + 'px)';
     teleHandle.className = 'teleHandle ' + (v > 0 ? 'fwd' : (v < 0 ? 'rev' : 'stop'));
-    teleRows.forEach(r => r.classList.toggle('on', +r.dataset.v === v));
+    const nearDetent = Math.round(v / 25) * 25;
+    teleRows.forEach(r => r.classList.toggle('on', +r.dataset.v === nearDetent));
     teleEl.setAttribute('aria-valuenow', String(v));
     teleEl.setAttribute('aria-valuetext',
       (v > 0 ? 'TIẾN ' : (v < 0 ? 'LÙI ' : 'DỪNG ')) + Math.abs(v) + '%');
   }
-  function motorSet(v, now) {
-    v = Math.max(-100, Math.min(100, Math.round(v / 25) * 25));
+  function motorSet(v, now, step) {
+    /* step defaults to the telegraph's 25% detents; the console MOTOR
+       gauge passes 5 for its finer drag steps — same clamp, same
+       render, same publish path either way */
+    const st = step || 25;
+    v = Math.max(-100, Math.min(100, Math.round(v / st) * st));
     teleRender(v);
     motorReadout(v);
     if (now) { clearTimeout(motorTimer); publishMotor(v); }
@@ -2399,7 +2421,10 @@ function drawRotGauge() {
 const gMotCtx = document.getElementById('gMotor').getContext('2d');
 function drawMotorGauge() {
   const S = 236, [c, R] = gaugeShell(gMotCtx, S);
-  const raw = window.__motorLive;
+  /* while the user drags this gauge (see the control block below) the
+     dial shows the dragged target; otherwise the ESP32-confirmed
+     window.__motorLive, exactly as before */
+  const raw = window.__motorDrag != null ? window.__motorDrag : window.__motorLive;
   const v = raw == null ? 0 : Math.max(-100, Math.min(100, raw));
   const aOf = x => x / 100 * 135;               /* compass-style: 0 at the top */
   const arcR = R - 17, rad = a => (a - 90) * Math.PI / 180;
@@ -2456,11 +2481,99 @@ function drawCaptions() {
   capEls.s.textContent = Math.max(0, Math.min(12, sogKn || 0)).toFixed(1) + ' kn';
   const rv = Math.round(Math.max(-60, Math.min(60, rotNow || 0)));
   capEls.r.textContent = (rv > 0 ? '+' : '') + rv + ' °/phút';
-  const raw = window.__motorLive;
+  const raw = window.__motorDrag != null ? window.__motorDrag : window.__motorLive;
   const mv = Math.round(raw == null ? 0 : Math.max(-100, Math.min(100, raw)));
   capEls.m.textContent = mv === 0 ? '0% · DỪNG' : (mv > 0 ? '+' : '') + mv + '%';
   capEls.m.style.color = (raw == null || mv === 0) ? '#9fc6d8' : (mv > 0 ? '#3dff8e' : '#ff9d5c');
 }
+
+/* ============ MOTOR gauge as a control (Sinh: "cũng có thể điều khiển
+   được động cơ qua biểu đồ này") — press/drag around the MOTOR dial's
+   ring (or simply click the arc) sets the motor, through the SAME
+   motorSet the sidebar telegraph uses (5% steps here), so the lever,
+   its % readout and the ESP32 feedback stay in sync on their own. The
+   pointer angle inverts drawMotorGauge's own mapping — compass-style
+   degrees (0 = top, clockwise), angle = value/100*135 — so value =
+   angle/135*100, clamped to the arc ends; a pointer in the bottom
+   dead zone (|angle| > 135) clamps to ±100. While dragging,
+   window.__motorDrag makes the dial + caption show the target; on
+   release the dial returns to the ESP32-confirmed window.__motorLive.
+   Double click / double tap = DỪNG (0%). The cell is a DOM overlay
+   above #scene, so OrbitControls never receives these pointers and
+   the camera stays put while the ring is dragged. */
+try {
+  const motCanvas = document.getElementById('gMotor');
+  const motCell = motCanvas.closest('.cell');
+  let motDragV = null;     /* current 5%-snapped value while dragging */
+  let motSentV = null;     /* last value handed to motorSet this drag */
+  let motDbl = false;      /* this press is the 2nd of a double tap */
+  let motLastUp = 0;
+
+  function motValueFromEvent(e) {
+    const r = motCanvas.getBoundingClientRect();
+    const dx = e.clientX - (r.left + r.width / 2);
+    const dy = e.clientY - (r.top + r.height / 2);
+    let a = Math.atan2(dx, -dy) * 180 / Math.PI;   /* compass-style deg */
+    a = Math.max(-135, Math.min(135, a));
+    return Math.round((a / 135 * 100) / 5) * 5;
+  }
+  function motShow(v) {
+    window.__motorDrag = v;
+    drawMotorGauge();
+    drawCaptions();
+  }
+  function motApply(v, now) {
+    if (!now && v === motSentV) return;
+    motSentV = v;
+    if (typeof window.__motorSet === 'function') window.__motorSet(v, now, 5);
+  }
+  function motEndDrag() {
+    window.__motorDrag = null;
+    motDragV = null;
+    motSentV = null;
+    motCell.classList.remove('dragging');
+    drawMotorGauge();
+    drawCaptions();
+  }
+  motCell.addEventListener('pointerdown', (e) => {
+    const isDbl = performance.now() - motLastUp < 350;
+    try { motCell.setPointerCapture(e.pointerId); } catch (err) { /* noop */ }
+    motCell.classList.add('dragging');
+    if (isDbl) {
+      /* double click / double tap: DỪNG — publish 0 at once; this
+         press then ends without re-applying the pointer angle */
+      motDbl = true;
+      motDragV = 0;
+      motShow(0);
+      motSentV = null;
+      motApply(0, true);
+    } else {
+      motDbl = false;
+      motDragV = motValueFromEvent(e);
+      motShow(motDragV);
+      motApply(motDragV, false);
+    }
+    e.preventDefault();
+  });
+  motCell.addEventListener('pointermove', (e) => {
+    if (motDragV === null || motDbl) return;
+    const v = motValueFromEvent(e);
+    if (v !== motDragV) {
+      motDragV = v;
+      motShow(v);
+      motApply(v, false);
+    }
+  });
+  const motRelease = () => {
+    if (motDragV === null) return;
+    if (!motDbl) motApply(motDragV, true);   /* always publish on release */
+    motLastUp = performance.now();
+    motDbl = false;
+    motEndDrag();
+  };
+  motCell.addEventListener('pointerup', motRelease);
+  motCell.addEventListener('pointercancel', motRelease);
+} catch (e) { console.warn('motor gauge control disabled', e); }
 
 /* ============ HUD ============ */
 const el = id => document.getElementById(id);
