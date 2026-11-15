@@ -40,6 +40,10 @@
   #telemetry .k { color:#7fa8c9; letter-spacing:.08em; }
   #telemetry .v { color:#eaf7ff; font-weight:700; }
   #telemetry .v em { font-style:normal; color:#6fd3ff; font-size:10.5px; margin-left:3px; }
+  /* group subheads inside the telemetry panel (Sinh: the mixed 10-row
+     list "nhìn bị rối quá" — real-data rows now sit under two small
+     group heads, same small-caps voice as #controls .popSec) */
+  #telemetry .grp { font-size:9.5px; letter-spacing:.24em; color:#7fa8c9; margin:10px 0 3px; }
   /* minimap + compass, right column */
   #rightCol { position:fixed; top:calc(var(--hdrH) + 10px); right:14px; z-index:10; display:flex; flex-direction:column; gap:10px; align-items:center; }
   #rightCol .hud { position:relative; }
@@ -374,15 +378,15 @@
       <div id="telemetry">
         <div class="hd"><span>NAV · TELEMETRY</span><span class="live" id="tMode" style="color:#ffb04d">● MÔ PHỎNG</span></div>
         <div class="row"><span class="k">UTC</span><span class="v" id="tUtc">--:--:--</span></div>
-        <div class="row"><span class="k" id="kLat">LAT</span><span class="v" id="tLat">--</span></div>
-        <div class="row"><span class="k" id="kLon">LON</span><span class="v" id="tLon">--</span></div>
+        <div class="grp">HƯỚNG & TỐC ĐỘ</div>
         <div class="row"><span class="k">HDG</span><span class="v" id="tHdg">--</span></div>
         <div class="row"><span class="k">COG</span><span class="v" id="tCog">--</span></div>
         <div class="row"><span class="k">SOG</span><span class="v" id="tSog">--</span></div>
-        <div class="row"><span class="k">WIND</span><span class="v" id="tWind">--</span></div>
-        <div class="row"><span class="k">SEA</span><span class="v" id="tSea">--</span></div>
-        <div class="row"><span class="k">DEPTH</span><span class="v" id="tDepth">--</span></div>
-        <div class="row"><span class="k">RNG·WPT</span><span class="v" id="tRng">--</span></div>
+        <div class="row"><span class="k">ROT</span><span class="v" id="tRot">--</span></div>
+        <div class="grp">VỊ TRÍ & ĐỘNG CƠ</div>
+        <div class="row"><span class="k">VỊ TRÍ X</span><span class="v" id="tPosX">--</span></div>
+        <div class="row"><span class="k">VỊ TRÍ Y</span><span class="v" id="tPosY">--</span></div>
+        <div class="row"><span class="k">MOTOR</span><span class="v" id="tMotor">--</span></div>
       </div>
     </section>
     <section class="sideSec">
@@ -2605,35 +2609,43 @@ const el = id => document.getElementById(id);
 let lastHud = 0, lastTrail = 0, lastChart = 0;
 function updateHud(t) {
   const s = sensors(t);
-  const [lat, lon] = geoOf(shipPos);
-  const [rng, wpt] = nearestWptDist(shipPos);
   const now = new Date();
   el('tUtc').textContent = now.toISOString().slice(11, 19);
-  el('tLat').textContent = fmtLat(lat);
-  el('tLon').textContent = fmtLon(lon);
+  /* real-data channels only (Sinh: "nào dữ liệu ảo thì bỏ đi rồi thiết
+     lập lại cấu trúc") — the simulated-only rows LAT / LON / WIND / SEA /
+     DEPTH / RNG·WPT are gone; the panel now mirrors the same channels
+     the console gauges read, grouped under two small heads */
   el('tHdg').innerHTML = headingDeg.toFixed(1) + '<em>°</em>';
   el('tCog').innerHTML = cogDeg.toFixed(1) + '<em>°</em>';
   el('tSog').innerHTML = s.sog.toFixed(1) + '<em>kn</em>';
-  el('tWind').innerHTML = s.wind.toFixed(0) + '<em>kn</em> ' + s.windDir.toFixed(0) + '<em>°</em>';
-  el('tSea').innerHTML = 'BF ' + beaufort(s.wind) + '<em>cấp</em>';
-  el('tDepth').innerHTML = s.depth.toFixed(1) + '<em>m</em>';
-  el('tRng').innerHTML = (rng / 1852).toFixed(2) + '<em>NM → WPT' + wpt + '</em>';
-  /* ESP32 live mode: badge + position rows switch to tank-frame X/Y (metres) */
+  /* ROT reads rotNow — the very variable the ROT console gauge draws,
+     same clamp + rounding as its caption, so the two never disagree */
+  const rv = Math.round(Math.max(-60, Math.min(60, rotNow || 0)));
+  el('tRot').innerHTML = (rv > 0 ? '+' : '') + rv + '<em>°/phút</em>';
+  /* position in metres: the ESP32 tank frame (LIVE.x / LIVE.y) while
+     LIVE; in SIM the ship position the scene itself sails on — shipPos
+     in scene units under the same mapping the LIVE override uses
+     (scene x = +x·10, z = −y·10), so metres = x/10 and −z/10 */
+  const posX = LIVE.on ? LIVE.x : shipPos.x / 10;
+  const posY = LIVE.on ? LIVE.y : -shipPos.z / 10;
+  el('tPosX').innerHTML = posX.toFixed(2) + '<em>m</em>';
+  el('tPosY').innerHTML = posY.toFixed(2) + '<em>m</em>';
+  /* MOTOR: the held state window.__motorCmd, formatted (and coloured)
+     exactly like the MOTOR gauge's caption */
+  const mRaw = window.__motorCmd;
+  const mv = Math.round(mRaw == null ? 0 : Math.max(-100, Math.min(100, mRaw)));
+  const tMot = el('tMotor');
+  tMot.textContent = mv === 0 ? '0% · DỪNG' : (mv > 0 ? '+' : '') + mv + '% · ' + (mv > 0 ? 'TIẾN' : 'LÙI');
+  tMot.style.color = (mRaw == null || mv === 0) ? '' : (mv > 0 ? '#3dff8e' : '#ff9d5c');
+  /* mode badge: ESP32 · LIVE while the feed is fresh, MÔ PHỎNG otherwise */
   const hudMode = LIVE.on ? 'live' : 'sim';
   if (hudMode !== LIVE.modeShown) {
     LIVE.modeShown = hudMode;
     if (LIVE.on) {
       el('tMode').textContent = '● ESP32 · LIVE'; el('tMode').style.color = '#3dff8e';
-      el('kLat').textContent = 'X'; el('kLon').textContent = 'Y';
     } else {
       el('tMode').textContent = '● MÔ PHỎNG'; el('tMode').style.color = '#ffb04d';
-      el('kLat').textContent = 'LAT'; el('kLon').textContent = 'LON';
     }
-  }
-  if (LIVE.on) {
-    el('tLat').textContent = LIVE.x.toFixed(2) + ' m';
-    el('tLon').textContent = LIVE.y.toFixed(2) + ' m';
-    el('tRng').innerHTML = Math.hypot(LIVE.x, LIVE.y).toFixed(2) + '<em>m · GỐC</em>';
   }
   /* (the old console header readouts cHdgV/cRotV went with the line charts;
      the gauges read headingDeg / rotNow / sogKn directly) */
