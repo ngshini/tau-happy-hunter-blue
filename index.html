@@ -1051,20 +1051,6 @@ const clouds = [];
     scene.add(sky.build(skyMat));
   }
 }
-/* a small workboat sailing its own wide ellipse — life in the scene */
-const boat2 = new THREE.Group();
-{
-  const hb = new THREE.Mesh(new THREE.BoxGeometry(11, 2.4, 3.8),
-    new THREE.MeshStandardMaterial({ color:0xa03a2a, roughness:0.8 }));
-  hb.position.y = 0.8; boat2.add(hb);
-  const cb = new THREE.Mesh(new THREE.BoxGeometry(3.6, 2.6, 3),
-    new THREE.MeshStandardMaterial({ color:0xf0f3f5, roughness:0.6 }));
-  cb.position.set(-2.4, 3, 0); boat2.add(cb);
-  const mb = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 5.4, 6),
-    new THREE.MeshStandardMaterial({ color:0x333a40, roughness:0.7 }));
-  mb.position.set(1.6, 4.4, 0); boat2.add(mb);
-  scene.add(boat2);
-}
 /* whitecap glints riding the wave crests */
 const CAPS_N = 380;
 const capsPos = new Float32Array(CAPS_N * 3);
@@ -2971,15 +2957,6 @@ function animate() {
   if (seaNormalTex) { seaNormalTex.offset.x = t * 0.0035; seaNormalTex.offset.y = -t * 0.0017; }
   if (quayFoamTex) { quayFoamTex.offset.x = t * 0.004; }
   if (radarBar) radarBar.rotation.y -= dt * 1.45;
-  /* second vessel on its own ellipse, opposite hand */
-  {
-    const bs = t * 0.0075 + 2.1;
-    const bx = -30 + Math.cos(bs) * 165, bz = 6 + Math.sin(bs) * 105;
-    const tx2 = -Math.sin(bs) * 165, tz2 = Math.cos(bs) * 105;
-    boat2.position.set(bx, waveH(bx, bz, t) * 0.75 + 0.15, bz);
-    boat2.rotation.y = Math.atan2(-tz2, tx2);
-    boat2.rotation.z = Math.sin(t * 1.1) * 0.03;
-  }
   /* whitecap glints follow the crests */
   if (caps) {
     for (let i = 0; i < CAPS_N; i++) {
