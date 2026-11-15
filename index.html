@@ -90,6 +90,22 @@
      disc to set the motor — pointer cursor + no touch scrolling here */
   #console .cell.motorCell { cursor:pointer; touch-action:none; }
   #console .cell.motorCell.dragging { cursor:grabbing; }
+  /* stepper row under the MOTOR gauge (Sinh): [ − ] [ DỪNG ] [ + ] —
+     real buttons in the same dark-glass HUD language, DỪNG in warning
+     red; sized for touch (36px tall) and as wide as the cell, so the
+     other three gauges keep their alignment (cells stretch equally) */
+  #console .motBtns { display:flex; gap:6px; margin-top:8px; width:100%; }
+  #console .motBtn { flex:1 1 0; height:36px; padding:0 4px;
+    font:inherit; font-size:16px; font-weight:700; letter-spacing:.06em;
+    color:#eaf7ff; cursor:pointer; border-radius:7px;
+    background:linear-gradient(180deg, rgba(10,44,74,.9), rgba(5,26,48,.92));
+    border:1px solid rgba(111,211,255,.45); border-top:2px solid rgba(111,211,255,.55);
+    user-select:none; -webkit-user-select:none; touch-action:none; }
+  #console .motBtn:active { background:linear-gradient(180deg, rgba(21,84,133,.95), rgba(9,44,78,.95)); }
+  #console .motBtn.stop { flex:1.4 1 0; font-size:12.5px; color:#ffc9b5;
+    border-color:rgba(255,122,89,.65); border-top-color:rgba(255,150,120,.85);
+    background:linear-gradient(180deg, rgba(94,32,20,.9), rgba(56,18,12,.92)); }
+  #console .motBtn.stop:active { background:linear-gradient(180deg, rgba(140,48,28,.95), rgba(80,26,16,.95)); }
   .gauge { display:block; width:118px; height:118px; }
   /* per-gauge captions (Sinh): one centred line under each dial — muted
      small-caps label + the live value in the dial's own accent colour,
@@ -506,6 +522,11 @@
   <div class="cell motorCell" title="Kéo để điều khiển động cơ">
     <canvas class="gauge" id="gMotor" width="236" height="236"></canvas>
     <div class="gcap"><span class="gcapL">ĐỘNG CƠ DC</span><span class="gcapSep">—</span><b class="gcapV" id="capMotV">—</b></div>
+    <div class="motBtns">
+      <button type="button" class="motBtn" id="btnMotMinus" aria-label="Giảm động cơ 2%">−</button>
+      <button type="button" class="motBtn stop" id="btnMotStop">DỪNG</button>
+      <button type="button" class="motBtn" id="btnMotPlus" aria-label="Tăng động cơ 2%">+</button>
+    </div>
   </div>
 </div>
 
@@ -2943,6 +2964,52 @@ try {
   };
   motCell.addEventListener('pointerup', motRelease);
   motCell.addEventListener('pointercancel', motRelease);
+
+  /* stepper buttons under the dial (Sinh): [ − ] [ DỪNG ] [ + ].
+     Every press funnels through motApply → motorSet, so the held
+     state, lever, captions, NAV row and the scaled publish all stay
+     in sync with the gauge itself. The buttons live INSIDE the cell,
+     so their pointerdown is stopped before it can reach the cell's
+     own press-to-set handler above (and the gauge's double-tap stop
+     bookkeeping never sees them). +/− step 2% — the gauge's step:
+     a plain click is exactly one step, published at once; holding
+     past ~400 ms ramps by 2% every ~90 ms (debounced publishes,
+     like a drag) and releasing publishes the final value at once.
+     DỪNG is a plain click → 0% at once. Keyboard Enter/Space fire
+     click with detail 0 — those step too; mouse/touch clicks
+     (detail ≥ 1) were already handled on pointerdown and are
+     ignored here so a click never double-steps. */
+  const motCur = () => (typeof window.__motorCmd === 'number' ? window.__motorCmd : 0);
+  function wireMotStepper(btn, dir) {
+    let holdDelay = null, holdInt = null, ramped = false;
+    const endHold = () => {
+      if (holdDelay) { clearTimeout(holdDelay); holdDelay = null; }
+      if (holdInt) { clearInterval(holdInt); holdInt = null; }
+      if (ramped) { ramped = false; motApply(motCur(), true); }
+    };
+    btn.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      try { btn.setPointerCapture(e.pointerId); } catch (err) { /* noop */ }
+      motApply(motCur() + dir * 2, true);
+      holdDelay = setTimeout(() => {
+        holdDelay = null;
+        ramped = true;
+        holdInt = setInterval(() => motApply(motCur() + dir * 2, false), 90);
+      }, 400);
+    });
+    btn.addEventListener('pointerup', endHold);
+    btn.addEventListener('pointercancel', endHold);
+    btn.addEventListener('lostpointercapture', endHold);
+    btn.addEventListener('click', (e) => { if (e.detail === 0) motApply(motCur() + dir * 2, true); });
+    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+  wireMotStepper(document.getElementById('btnMotMinus'), -1);
+  wireMotStepper(document.getElementById('btnMotPlus'), +1);
+  const motStopBtn = document.getElementById('btnMotStop');
+  motStopBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); });
+  motStopBtn.addEventListener('click', () => motApply(0, true));
+  motStopBtn.addEventListener('contextmenu', (e) => e.preventDefault());
 } catch (e) { console.warn('motor gauge control disabled', e); }
 
 /* ============ HUD ============ */
