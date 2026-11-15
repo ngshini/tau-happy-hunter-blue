@@ -32,10 +32,6 @@
      no floating panel, no border of its own; the HUD loop keeps writing
      its rows while the sidebar is closed, so it never opens stale */
   #telemetry { padding:2px 0 0; }
-  #telemetry .hd { font-size:10px; letter-spacing:.22em; color:#6fd3ff;
-    border-bottom:1px solid rgba(96,190,255,.25); padding-bottom:5px; margin-bottom:5px;
-    display:flex; justify-content:space-between; }
-  #telemetry .hd .live { color:#3dff8e; }
   #telemetry .row { display:flex; justify-content:space-between; gap:18px; font-size:12px; line-height:1.5; }
   #telemetry .k { color:#7fa8c9; letter-spacing:.08em; }
   #telemetry .v { color:#eaf7ff; font-weight:700; }
@@ -132,11 +128,14 @@
   #btnSide.on { background:#0e5f9e; border-color:#6fd3ff; color:#fff; }
   /* collapsible sidebar (Sinh): the header's three crude pills collapse
      into this one left panel — motor telegraph, telemetry rows and the
-     history log stacked as three sections (DOM moved, not duplicated).
+     history log as three sections (DOM moved, not duplicated).
      Slide motion per the overlay guide: transform only, 500 ms in /
      350 ms out on the iOS sheet curve; the panel stays in the DOM while
      closed (visibility, not display) so telemetry keeps updating and
-     the history canvases keep their layout size */
+     the history canvases keep their layout size. The three sections
+     are an ACCORDION now (Sinh: "kiểu này sẽ hiện tên ra, khi nào click
+     vào sẽ xổ ra được nội dung bên trong — nhìn cho gọn"): only the
+     section names show, one section open at a time */
   #sidebar { position:fixed; top:var(--hdrH); left:0; bottom:0; width:360px; max-width:100vw; z-index:19;
     display:flex; flex-direction:column; color:#cfeaff;
     background:linear-gradient(180deg, rgba(5,26,48,.97), rgba(4,20,38,.95));
@@ -157,13 +156,37 @@
     padding:2px 6px; cursor:pointer; }
   #btnSideClose:hover { color:#fff; }
   #sideBody { flex:1 1 auto; overflow-y:auto; overflow-x:hidden; padding:12px 16px 18px; }
-  #sideBody .sideSec + .sideSec { border-top:1px solid rgba(96,190,255,.22); margin-top:16px; padding-top:14px; }
+  #sideBody .sideSec + .sideSec { border-top:1px solid rgba(96,190,255,.22); margin-top:8px; }
+  /* sidebar accordion: a header row carries ONLY the section name (+
+     the NAV live badge, which is a status, not content) and a chevron;
+     the body unfolds on a grid-rows 0fr -> 1fr transition (~350 ms on
+     the same iOS sheet curve as the sidebar itself). Content keeps its
+     real layout size while collapsed (the row clips it, nothing is
+     display:none), so telemetry rows and history canvases never lose
+     their dimensions; visibility rides along on the same delay pattern
+     as the sidebar so collapsed controls leave the tab order too */
+  .accHd { display:flex; align-items:center; gap:8px; width:100%;
+    font:inherit; font-size:11px; letter-spacing:.22em; color:#6fd3ff; text-align:left;
+    background:none; border:none; cursor:pointer; padding:11px 2px 10px; }
+  .accHd:hover { color:#fff; }
+  .accHd .accTitle { flex:1 1 auto; }
+  .accHd .live { font-size:10px; letter-spacing:.08em; }
+  .accHd .accChev { flex:0 0 auto; font-size:10px; color:#6fd3ff;
+    transition:transform .35s cubic-bezier(0.32,0.72,0,1); }
+  .sideSec.open .accHd { color:#aee6ff; }
+  .sideSec.open .accHd .accChev { transform:rotate(90deg); }
+  .accBody { display:grid; grid-template-rows:0fr; visibility:hidden;
+    transition:grid-template-rows .35s cubic-bezier(0.32,0.72,0,1), visibility 0s linear .35s; }
+  .sideSec.open .accBody { grid-template-rows:1fr; visibility:visible;
+    transition:grid-template-rows .35s cubic-bezier(0.32,0.72,0,1), visibility 0s; }
+  .accBodyIn { overflow:hidden; min-height:0; padding-bottom:8px; }
+  @media (prefers-reduced-motion: reduce) {
+    .accBody, .sideSec.open .accBody { transition:none; }
+    .accHd .accChev { transition:none; }
+  }
   /* motor controls are sidebar section 1 now: a plain block, the old
      floating-popup positioning is gone; descendant rules unchanged */
   #controls { padding:2px 0 0; }
-  #controls .popHd { display:flex; justify-content:space-between; align-items:center;
-    font-size:10.5px; letter-spacing:.22em; color:#6fd3ff;
-    border-bottom:1px solid rgba(96,190,255,.25); padding-bottom:9px; margin-bottom:10px; }
   #controls .popSec { font-size:9.5px; letter-spacing:.24em; color:#7fa8c9; margin:8px 0 7px; }
   #controls .popGrid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; }
   #controls button { font:inherit; font-size:10.5px; letter-spacing:.04em; cursor:pointer;
@@ -224,10 +247,9 @@
      full-width drop-down drawer presentation is gone; descendant rules
      (headers, buttons, charts, tables) unchanged */
   #history { color:#cfeaff; padding:2px 0 0; }
-  #history .histHd { display:flex; justify-content:space-between; align-items:center;
-    font-size:11px; letter-spacing:.22em; color:#6fd3ff;
-    border-bottom:1px solid rgba(96,190,255,.25); padding-bottom:9px; margin-bottom:10px; }
-  #history .histHdBtns { display:flex; gap:7px; align-items:center; }
+  /* the LÀM MỚI button lives at the top of the history content now —
+     the accordion header above it carries only the section name */
+  #history .histTop { display:flex; justify-content:flex-end; margin-bottom:8px; }
   #history button { font:inherit; font-size:10.5px; letter-spacing:.04em; cursor:pointer;
     color:#cfeaff; background:rgba(10,44,74,.65); border:1px solid rgba(96,190,255,.35);
     border-radius:9px; padding:7px 12px; transition:all .15s; }
@@ -338,9 +360,10 @@
 <aside id="sidebar" aria-hidden="true">
   <div class="sideHd"><span>BẢNG ĐIỀU KHIỂN</span><button id="btnSideClose" title="Đóng">✕</button></div>
   <div id="sideBody">
-    <section class="sideSec">
+    <section class="sideSec acc open" data-acc="motor">
+      <button type="button" class="accHd" aria-expanded="true"><span class="accTitle">ĐIỀU KHIỂN ĐỘNG CƠ</span><span class="accChev" aria-hidden="true">▸</span></button>
+      <div class="accBody"><div class="accBodyIn">
       <div id="controls">
-        <div class="popHd"><span>ĐIỀU KHIỂN ĐỘNG CƠ</span></div>
         <div class="popSec">ĐỘNG CƠ DC</div>
         <div class="motorBox">
           <div class="teleLayout">
@@ -373,10 +396,12 @@
         </div>
         <div class="popHint">Mẹo: kéo / vuốt trực tiếp trên mô hình để xoay góc nhìn · cuộn chuột hoặc chụm 2 ngón để zoom.</div>
       </div>
+      </div></div>
     </section>
-    <section class="sideSec">
+    <section class="sideSec acc" data-acc="nav">
+      <button type="button" class="accHd" aria-expanded="false"><span class="accTitle">NAV · TELEMETRY</span><span class="live" id="tMode" style="color:#ffb04d">● MÔ PHỎNG</span><span class="accChev" aria-hidden="true">▸</span></button>
+      <div class="accBody"><div class="accBodyIn">
       <div id="telemetry">
-        <div class="hd"><span>NAV · TELEMETRY</span><span class="live" id="tMode" style="color:#ffb04d">● MÔ PHỎNG</span></div>
         <div class="row"><span class="k">UTC</span><span class="v" id="tUtc">--:--:--</span></div>
         <div class="grp">HƯỚNG & TỐC ĐỘ</div>
         <div class="row"><span class="k">HDG</span><span class="v" id="tHdg">--</span></div>
@@ -388,12 +413,13 @@
         <div class="row"><span class="k">VỊ TRÍ Y</span><span class="v" id="tPosY">--</span></div>
         <div class="row"><span class="k">MOTOR</span><span class="v" id="tMotor">--</span></div>
       </div>
+      </div></div>
     </section>
-    <section class="sideSec">
+    <section class="sideSec acc" data-acc="hist">
+      <button type="button" class="accHd" aria-expanded="false"><span class="accTitle">📜 LỊCH SỬ DỮ LIỆU CẢM BIẾN</span><span class="accChev" aria-hidden="true">▸</span></button>
+      <div class="accBody"><div class="accBodyIn">
       <div id="history">
-        <div class="histHd"><span>📜 LỊCH SỬ DỮ LIỆU CẢM BIẾN</span>
-          <span class="histHdBtns"><button id="btnHistRefresh">↻ LÀM MỚI</button></span>
-        </div>
+        <div class="histTop"><button id="btnHistRefresh">↻ LÀM MỚI</button></div>
         <div class="histBar"><span class="histLbl">KHOẢNG THỜI GIAN</span>
           <button data-min="15">15 PHÚT</button>
           <button data-min="60" class="on">1 GIỜ</button>
@@ -445,6 +471,7 @@
           </table></div>
         </div>
       </div>
+      </div></div>
     </section>
   </div>
 </aside>
@@ -1686,14 +1713,15 @@ const ORBIT_HOME = new THREE.Vector3(Math.sin(2.45) * 258, 122, Math.cos(2.45) *
 /* ============ collapsible sidebar (Sinh) ============
    The header keeps only the logo and one ☰ toggle; the motor popup,
    the NAV · TELEMETRY panel and the history drawer moved into this
-   left sidebar as three stacked sections (DOM moved, not duplicated).
+   left sidebar as three sections (DOM moved, not duplicated).
    Closed by default. The HUD loop keeps refreshing the telemetry rows
    while the sidebar is closed, so it never opens on stale numbers.
-   Opening the sidebar is also what loads/draws the history charts —
-   the exact hook the old drawer's open used (the history functions
-   are declared further down; they run on click, after this module
-   has fully evaluated). No outside-click close and no backdrop: it is
-   a docked panel, closed via the ☰ toggle or its own ✕. */
+   Opening the sidebar re-runs the history load/draw hook when the
+   LỊCH SỬ accordion section is the open one — the exact hook the old
+   drawer's open used (the history functions are declared further
+   down; they run on click, after this module has fully evaluated).
+   No outside-click close and no backdrop: it is a docked panel,
+   closed via the ☰ toggle or its own ✕. */
 const sidebar = document.getElementById('sidebar');
 const btnSide = document.getElementById('btnSide');
 let sideOpen = false;
@@ -1703,14 +1731,42 @@ function toggleSidebar(show) {
   sidebar.setAttribute('aria-hidden', sideOpen ? 'false' : 'true');
   btnSide.classList.toggle('on', sideOpen);
   btnSide.setAttribute('aria-expanded', sideOpen ? 'true' : 'false');
-  if (sideOpen) {
+  if (sideOpen) histHookIfOpen();
+}
+btnSide.addEventListener('click', (e) => { e.stopPropagation(); toggleSidebar(); });
+document.getElementById('btnSideClose').addEventListener('click', () => toggleSidebar(false));
+
+/* ============ sidebar accordion (Sinh) ============
+   Only the section names show; clicking a header unfolds that
+   section's content and folds the others (one open at a time, and
+   clicking the open header folds it too — all-closed is allowed).
+   ĐIỀU KHIỂN ĐỘNG CƠ starts open (the .open class in the markup).
+   The NAV badge stays in its header row while collapsed — it is a
+   live status, not content. Expanding LỊCH SỬ runs the history
+   load/draw hook, so its canvases draw at real size on open. */
+const accSecs = Array.prototype.slice.call(document.querySelectorAll('#sideBody .sideSec.acc'));
+const accHistSec = accSecs.filter(s => s.dataset.acc === 'hist')[0] || null;
+function histHookIfOpen() {
+  if (accHistSec && accHistSec.classList.contains('open')) {
     histStatsLine();
     loadHist(hist.tab);
     requestAnimationFrame(() => renderHist(hist.tab));
   }
 }
-btnSide.addEventListener('click', (e) => { e.stopPropagation(); toggleSidebar(); });
-document.getElementById('btnSideClose').addEventListener('click', () => toggleSidebar(false));
+function accSet(sec, open) {
+  sec.classList.toggle('open', open);
+  const hd = sec.querySelector('.accHd');
+  if (hd) hd.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open && sec === accHistSec) histHookIfOpen();
+}
+accSecs.forEach(sec => {
+  const hd = sec.querySelector('.accHd');
+  if (!hd) return;
+  hd.addEventListener('click', () => {
+    const willOpen = !sec.classList.contains('open');
+    accSecs.forEach(s => accSet(s, s === sec ? willOpen : false));
+  });
+});
 /* sailing is permanently on: the ship always runs its route (the old
    DỪNG CHẠY pause button went away with the TRÌNH DIỄN section) */
 
@@ -2008,8 +2064,9 @@ function renderLidarHist(d) {
   renderHistScan();
 }
 
-/* history has no open/close state of its own anymore: it is sidebar
-   section 3, and toggleSidebar() runs the load/draw hook on open */
+/* history is sidebar section 3 (an accordion item): expanding it —
+   or opening the sidebar while it is the expanded section — runs the
+   load/draw hook (histHookIfOpen, up by the sidebar block) */
 h$('btnHistRefresh').addEventListener('click', () => { hist.health = null; loadHist(hist.tab, true); });
 histBox.querySelectorAll('[data-min]').forEach(b => b.addEventListener('click', () => {
   histBox.querySelectorAll('[data-min]').forEach(x => x.classList.toggle('on', x === b));
