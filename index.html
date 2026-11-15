@@ -2118,7 +2118,9 @@ try {
   /* MOTOR_SCALE — web-side safety/demo limit (Sinh, 2026-11-15): the
      web's controls keep their full 0..100% scale for the user, but
      the value that actually reaches the ESP32 is web × MOTOR_SCALE,
-     so web 100% runs the REAL motor at just 10%. The board's
+     so web 100% runs the REAL motor at 30%. (Cap raised by Sinh
+     from 10% to 30% on 2026-11-15: at 10% the real motor could not
+     overcome its starting threshold and would not spin.) The board's
      telemetry echo is converted back (÷ MOTOR_SCALE, clamped to
      ±100) at the ingestion points, so every display on the page
      (lever, gauge, captions, NAV row, feedback line) keeps working
@@ -2127,7 +2129,7 @@ try {
      telemetry ingestion, never inside motorSet or any UI state.
      The converters are shared via window because the live-echo
      handler lives in a later block. */
-  const MOTOR_SCALE = 0.1;
+  const MOTOR_SCALE = 0.3;
   const motorToBoard = v => Math.round(v * MOTOR_SCALE);
   const motorToWeb = v => Math.max(-100, Math.min(100, Math.round(v / MOTOR_SCALE)));
   window.__motorToWeb = motorToWeb;
