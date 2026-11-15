@@ -86,26 +86,54 @@
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
   #console .cell.compassCell { border-color:rgba(111,211,255,.6);
     box-shadow:0 0 18px rgba(56,189,248,.28), inset 0 0 12px rgba(56,189,248,.08); }
-  /* the MOTOR gauge doubles as a control (Sinh): drag anywhere on its
-     disc to set the motor — pointer cursor + no touch scrolling here */
-  #console .cell.motorCell { cursor:pointer; touch-action:none; }
-  #console .cell.motorCell.dragging { cursor:grabbing; }
+  /* the MOTOR gauge is DISPLAY-ONLY (Sinh): no press/drag on the
+     dial — too easy to misclick; the motor is set from the stepper
+     row below it, the sidebar telegraph or the keyboard */
   /* stepper row under the MOTOR gauge (Sinh): [ − ] [ DỪNG ] [ + ] —
-     real buttons in the same dark-glass HUD language, DỪNG in warning
-     red; sized for touch (36px tall) and as wide as the cell, so the
-     other three gauges keep their alignment (cells stretch equally) */
-  #console .motBtns { display:flex; gap:6px; margin-top:8px; width:100%; }
-  #console .motBtn { flex:1 1 0; height:36px; padding:0 4px;
-    font:inherit; font-size:16px; font-weight:700; letter-spacing:.06em;
-    color:#eaf7ff; cursor:pointer; border-radius:7px;
-    background:linear-gradient(180deg, rgba(10,44,74,.9), rgba(5,26,48,.92));
-    border:1px solid rgba(111,211,255,.45); border-top:2px solid rgba(111,211,255,.55);
-    user-select:none; -webkit-user-select:none; touch-action:none; }
-  #console .motBtn:active { background:linear-gradient(180deg, rgba(21,84,133,.95), rgba(9,44,78,.95)); }
-  #console .motBtn.stop { flex:1.4 1 0; font-size:12.5px; color:#ffc9b5;
-    border-color:rgba(255,122,89,.65); border-top-color:rgba(255,150,120,.85);
-    background:linear-gradient(180deg, rgba(94,32,20,.9), rgba(56,18,12,.92)); }
-  #console .motBtn.stop:active { background:linear-gradient(180deg, rgba(140,48,28,.95), rgba(80,26,16,.95)); }
+     styled to echo the dial above it: deep-navy glass, a soft cyan
+     glow like the gauge's ring on − / +, DỪNG in a rich warning red
+     with a glow of its own; sized for touch (38px tall) and as wide
+     as the cell, so the other three gauges keep their alignment
+     (cells stretch equally) */
+  #console .motBtns { display:flex; gap:8px; margin-top:10px; width:100%; }
+  #console .motBtn { flex:1 1 0; height:38px; padding:0 4px;
+    display:flex; align-items:center; justify-content:center;
+    font:inherit; font-size:20px; font-weight:700; line-height:1;
+    color:#eaf7ff; cursor:pointer; border-radius:11px;
+    background:linear-gradient(180deg, rgba(17,62,99,.95), rgba(6,28,52,.96));
+    border:1px solid rgba(111,211,255,.55);
+    box-shadow:0 0 10px rgba(56,189,248,.22),
+      inset 0 1px 0 rgba(170,228,255,.35),
+      inset 0 -8px 14px rgba(0,0,0,.35);
+    user-select:none; -webkit-user-select:none; touch-action:none;
+    transition:background .15s ease, box-shadow .15s ease, transform .05s ease; }
+  @media (hover:hover) {
+    #console .motBtn:hover { background:linear-gradient(180deg, rgba(24,80,126,.97), rgba(8,36,66,.97));
+      box-shadow:0 0 14px rgba(56,189,248,.38),
+        inset 0 1px 0 rgba(190,236,255,.45),
+        inset 0 -8px 14px rgba(0,0,0,.3); }
+  }
+  #console .motBtn:active { transform:translateY(1px);
+    background:linear-gradient(180deg, rgba(28,96,150,.97), rgba(10,44,80,.97));
+    box-shadow:0 0 6px rgba(56,189,248,.25),
+      inset 0 2px 6px rgba(0,0,0,.45),
+      inset 0 -4px 10px rgba(56,189,248,.12); }
+  #console .motBtn.stop { flex:1.4 1 0; font-size:13px; letter-spacing:.14em; color:#ffd9c9;
+    border-color:rgba(255,130,95,.7);
+    background:linear-gradient(180deg, rgba(126,36,19,.96), rgba(66,17,9,.97));
+    box-shadow:0 0 10px rgba(255,90,50,.26),
+      inset 0 1px 0 rgba(255,183,155,.4),
+      inset 0 -8px 14px rgba(0,0,0,.4); }
+  @media (hover:hover) {
+    #console .motBtn.stop:hover { background:linear-gradient(180deg, rgba(152,44,23,.97), rgba(80,21,11,.97));
+      box-shadow:0 0 15px rgba(255,90,50,.42),
+        inset 0 1px 0 rgba(255,196,168,.5),
+        inset 0 -8px 14px rgba(0,0,0,.35); }
+  }
+  #console .motBtn.stop:active { background:linear-gradient(180deg, rgba(168,52,27,.97), rgba(88,24,13,.97));
+    box-shadow:0 0 6px rgba(255,90,50,.3),
+      inset 0 2px 6px rgba(0,0,0,.5),
+      inset 0 -4px 10px rgba(255,90,50,.14); }
   .gauge { display:block; width:118px; height:118px; }
   /* per-gauge captions (Sinh): one centred line under each dial — muted
      small-caps label + the live value in the dial's own accent colour,
@@ -519,7 +547,7 @@
     <canvas class="gauge" id="gRot" width="236" height="236"></canvas>
     <div class="gcap"><span class="gcapL">TỐC ĐỘ XOAY</span><span class="gcapSep">—</span><b class="gcapV" id="capRotV">—</b></div>
   </div>
-  <div class="cell motorCell" title="Kéo để điều khiển động cơ">
+  <div class="cell">
     <canvas class="gauge" id="gMotor" width="236" height="236"></canvas>
     <div class="gcap"><span class="gcapL">ĐỘNG CƠ DC</span><span class="gcapSep">—</span><b class="gcapV" id="capMotV">—</b></div>
     <div class="motBtns">
@@ -2863,51 +2891,19 @@ function drawCaptions() {
   capEls.m.style.color = (raw == null || mv === 0) ? '#9fc6d8' : (mv > 0 ? '#3dff8e' : '#ff9d5c');
 }
 
-/* ============ MOTOR gauge as a control (Sinh: "cũng có thể điều khiển
-   được động cơ qua biểu đồ này"; chốt lại: "nhấn 1 lần là đưa rồi giữ
-   lại ở số đấy luôn") — the WHOLE disc of the MOTOR cell is the
-   control, through the SAME motorSet the sidebar telegraph uses, so
-   the lever, its % readout and this gauge stay in sync on their own.
-   PRESS-ONCE-SET-AND-HOLD:
-   - one press anywhere on the disc sets the level from the press
-     position at once and publishes immediately: the pointer angle
-     inverts drawMotorGauge's own mapping — compass-style degrees
-     (0 = top, clockwise), angle = value/100*135 — snapped to 2%; a
-     press in the bottom dead zone (|angle| > 135) clamps to ±100.
-   - because motorSet writes the held state (window.__motorCmd) the
-     moment the press lands, the dial + caption KEEP showing the set
-     value after release — no holding, no snap-back to the last
-     ESP32 report when the board is off; a live telemetry echo can
-     still refresh the state afterwards (it reports what the board
-     actually applied).
-   - keep pressing and move: the value follows the pointer position
-     (same absolute mapping, snap 2%, publish throttled by motorSet's
-     debounce) and latches at the release position.
-   Double click / double tap = DỪNG (0%). The cell is a DOM overlay
-   above #scene, so OrbitControls never receives these pointers and
-   the camera stays put while pressing. */
+/* ============ MOTOR gauge steppers (Sinh) — the dial itself is
+   DISPLAY-ONLY: the press / drag / double-click control that used to
+   live on the disc was removed ("bỏ đi tính năng kéo ngay trên biểu
+   đồ vì dễ bị click nhầm"), so clicking or dragging anywhere on the
+   gauge changes nothing and publishes nothing. The motor is set from
+   the [ − ] [ DỪNG ] [ + ] buttons under the dial, the sidebar
+   telegraph or its keyboard — all through the SAME motorSet, so the
+   held state (window.__motorCmd), the lever, its % readout and this
+   gauge stay in sync on their own; a live telemetry echo can still
+   refresh the state afterwards (it reports what the board actually
+   applied). The cell is a DOM overlay above #scene, so pointers on
+   the dial never reach OrbitControls either. */
 try {
-  const motCanvas = document.getElementById('gMotor');
-  const motCell = motCanvas.closest('.cell');
-  let motPress = false;    /* a press is currently down on the cell */
-  let motV = null;         /* value this press currently selects */
-  let motPubV = null;      /* last value this press published at once */
-  let motDbl = false;      /* this press is the 2nd of a double tap */
-  let motLastUp = 0;
-
-  /* raw pointer geometry around the dial centre: compass-style angle
-     (0 = top, clockwise, NOT clamped) + distance from the centre */
-  function motRawAngle(e) {
-    const r = motCanvas.getBoundingClientRect();
-    const dx = e.clientX - (r.left + r.width / 2);
-    const dy = e.clientY - (r.top + r.height / 2);
-    return { a: Math.atan2(dx, -dy) * 180 / Math.PI, rad: Math.hypot(dx, dy) };
-  }
-  function motValueFromEvent(e) {
-    let a = motRawAngle(e).a;
-    a = Math.max(-135, Math.min(135, a));
-    return Math.round((a / 135 * 100) / 2) * 2;
-  }
   /* hand a value to the shared motorSet (which writes the held state
      __motorCmd and moves the lever), then repaint at once so the dial
      + caption show the new value in the same frame as the press */
@@ -2916,69 +2912,18 @@ try {
     drawMotorGauge();
     drawCaptions();
   }
-  motCell.addEventListener('pointerdown', (e) => {
-    const isDbl = performance.now() - motLastUp < 350;
-    try { motCell.setPointerCapture(e.pointerId); } catch (err) { /* noop */ }
-    motCell.classList.add('dragging');
-    motPress = true;
-    if (isDbl) {
-      /* double click / double tap: DỪNG — publish 0 at once; this
-         press then ends without re-applying the pointer angle */
-      motDbl = true;
-      motV = 0;
-      motApply(0, true);
-      motPubV = 0;
-    } else {
-      /* ONE press sets the level: the press position selects it and
-         it publishes immediately — the value then stays (held state),
-         whether or not the pointer is released right away */
-      motDbl = false;
-      motV = motValueFromEvent(e);
-      motApply(motV, true);
-      motPubV = motV;
-    }
-    e.preventDefault();
-  });
-  motCell.addEventListener('pointermove', (e) => {
-    if (!motPress || motDbl) return;
-    if (motRawAngle(e).rad < 12) return;   /* on the hub the angle is pure noise */
-    /* keep pressing and move: the value follows the pointer position
-       (absolute mapping, snap 2%); motorSet throttles the publish */
-    const v = motValueFromEvent(e);
-    if (v !== motV) { motV = v; motApply(v, false); }
-  });
-  const motRelease = () => {
-    if (!motPress) return;
-    motPress = false;
-    /* latch at the release position: publish the final value at once
-       if this press hasn't already (a plain press published on the
-       way down, so a simple click sends exactly one command) */
-    if (!motDbl && motV !== null && motV !== motPubV) motApply(motV, true);
-    motLastUp = performance.now();
-    motDbl = false;
-    motV = null;
-    motPubV = null;
-    motCell.classList.remove('dragging');
-    drawMotorGauge();
-    drawCaptions();
-  };
-  motCell.addEventListener('pointerup', motRelease);
-  motCell.addEventListener('pointercancel', motRelease);
 
-  /* stepper buttons under the dial (Sinh): [ − ] [ DỪNG ] [ + ].
+  /* stepper buttons under the dial (Sinh): [ − ] [ DỪNG ] [ + ] —
+     the only control on this cell now that the dial is display-only.
      Every press funnels through motApply → motorSet, so the held
      state, lever, captions, NAV row and the scaled publish all stay
-     in sync with the gauge itself. The buttons live INSIDE the cell,
-     so their pointerdown is stopped before it can reach the cell's
-     own press-to-set handler above (and the gauge's double-tap stop
-     bookkeeping never sees them). +/− step 2% — the gauge's step:
-     a plain click is exactly one step, published at once; holding
-     past ~400 ms ramps by 2% every ~90 ms (debounced publishes,
-     like a drag) and releasing publishes the final value at once.
-     DỪNG is a plain click → 0% at once. Keyboard Enter/Space fire
-     click with detail 0 — those step too; mouse/touch clicks
-     (detail ≥ 1) were already handled on pointerdown and are
-     ignored here so a click never double-steps. */
+     in sync with the gauge itself. +/− step 2%: a plain click is
+     exactly one step, published at once; holding past ~400 ms ramps
+     by 2% every ~90 ms (debounced publishes) and releasing publishes
+     the final value at once. DỪNG is a plain click → 0% at once.
+     Keyboard Enter/Space fire click with detail 0 — those step too;
+     mouse/touch clicks (detail ≥ 1) were already handled on
+     pointerdown and are ignored here so a click never double-steps. */
   const motCur = () => (typeof window.__motorCmd === 'number' ? window.__motorCmd : 0);
   function wireMotStepper(btn, dir) {
     let holdDelay = null, holdInt = null, ramped = false;
@@ -3010,7 +2955,7 @@ try {
   motStopBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); });
   motStopBtn.addEventListener('click', () => motApply(0, true));
   motStopBtn.addEventListener('contextmenu', (e) => e.preventDefault());
-} catch (e) { console.warn('motor gauge control disabled', e); }
+} catch (e) { console.warn('motor steppers disabled', e); }
 
 /* ============ HUD ============ */
 const el = id => document.getElementById(id);
