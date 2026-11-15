@@ -2066,10 +2066,26 @@ try {
     motorDir.textContent = v > 0 ? 'TIẾN' : (v < 0 ? 'LÙI' : 'DỪNG');
     motorDir.className = 'motorDir ' + (v > 0 ? 'fwd' : (v < 0 ? 'rev' : 'stop'));
   }
+  /* MOTOR_SCALE — web-side safety/demo limit (Sinh, 2026-11-15): the
+     web's controls keep their full 0..100% scale for the user, but
+     the value that actually reaches the ESP32 is web × MOTOR_SCALE,
+     so web 100% runs the REAL motor at just 10%. The board's
+     telemetry echo is converted back (÷ MOTOR_SCALE, clamped to
+     ±100) at the ingestion points, so every display on the page
+     (lever, gauge, captions, NAV row, feedback line) keeps working
+     in web %. Do NOT "fix" this back to 1 — the scale is applied
+     ONLY at the publish boundary (publishMotor, below) and at
+     telemetry ingestion, never inside motorSet or any UI state.
+     The converters are shared via window because the live-echo
+     handler lives in a later block. */
+  const MOTOR_SCALE = 0.1;
+  const motorToBoard = v => Math.round(v * MOTOR_SCALE);
+  const motorToWeb = v => Math.max(-100, Math.min(100, Math.round(v / MOTOR_SCALE)));
+  window.__motorToWeb = motorToWeb;
   function publishMotor(v) {
     const mq = window.__mq;
     if (mq && typeof mq.publish === 'function') {
-      try { mq.publish(cmdTopic, JSON.stringify({ motor: v })); } catch (e) { /* offline queue */ }
+      try { mq.publish(cmdTopic, JSON.stringify({ motor: motorToBoard(v) })); } catch (e) { /* offline queue */ }
       motorHint.style.display = mq.connected ? 'none' : 'block';
     } else {
       motorHint.style.display = 'block';
@@ -2169,7 +2185,8 @@ try {
       try {
         const d = JSON.parse(new TextDecoder().decode(payload));
         if (typeof d.motor === 'number') {
-          motorFbVal.textContent = d.motor + '%';
+          /* echo arrives in board scale — show it in web % */
+          motorFbVal.textContent = motorToWeb(d.motor) + '%';
           motorFb.style.display = 'block';
         }
       } catch (e) { /* ignore malformed packets */ }
@@ -2505,10 +2522,15 @@ try {
       try {
         const d = JSON.parse(new TextDecoder().decode(payload));
         if (typeof d.motor === 'number') {
-          window.__motorLive = d.motor;
-          window.__motorCmd = d.motor;
+          /* the echo arrives in board scale (see MOTOR_SCALE in the
+             motor control block) — convert back to web % ONCE, here
+             at ingestion, so __motorCmd and every display downstream
+             keep working in web % */
+          const web = (typeof window.__motorToWeb === 'function') ? window.__motorToWeb(d.motor) : d.motor;
+          window.__motorLive = web;
+          window.__motorCmd = web;
           const mv = document.getElementById('cMotorV');
-          if (mv) mv.textContent = (d.motor > 0 ? '+' : '') + d.motor + '%';
+          if (mv) mv.textContent = (web > 0 ? '+' : '') + web + '%';
         }
       } catch (e) { /* ignore malformed packets */ }
     });
