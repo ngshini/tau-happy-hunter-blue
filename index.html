@@ -520,6 +520,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /* ============ renderer / scene ============ */
 const canvas = document.getElementById('scene');
@@ -539,7 +540,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.02;
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x9fd2f2, 300, 860);
+scene.fog = new THREE.Fog(0xd9ecf5, 300, 860);
 const camera = new THREE.PerspectiveCamera(46, vs0.w / vs0.h, 0.1, 2200);
 camera.position.set(30, 265, 560);
 
@@ -560,7 +561,7 @@ scene.add(sun); scene.add(sun.target);
 {
   const c = document.createElement('canvas'); c.width = 4; c.height = 256;
   const g = c.getContext('2d'), gr = g.createLinearGradient(0,0,0,256);
-  gr.addColorStop(0,'#5fa8dd'); gr.addColorStop(0.55,'#9fd2f2'); gr.addColorStop(0.78,'#d8f0fc'); gr.addColorStop(1,'#eaf7ff');
+  gr.addColorStop(0,'#2b74c2'); gr.addColorStop(0.45,'#6db1e4'); gr.addColorStop(0.70,'#aed9f2'); gr.addColorStop(0.88,'#f2e9d2'); gr.addColorStop(1,'#eaf6fb');
   g.fillStyle = gr; g.fillRect(0,0,4,256);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   scene.add(new THREE.Mesh(new THREE.SphereGeometry(900, 24, 16),
@@ -578,6 +579,7 @@ const ocean = new THREE.Mesh(
   new THREE.MeshStandardMaterial({ color:0x1773c4, roughness:0.5, metalness:0.0, transparent:true, opacity:0.94 }));
 ocean.material.envMapIntensity = 0.55;
 let seaTex;
+let quayFoamTex = null;
 {
   const c = document.createElement('canvas'); c.width = c.height = 256;
   const g = c.getContext('2d');
@@ -608,6 +610,21 @@ ocean.rotation.x = -Math.PI/2; ocean.receiveShadow = true;
 scene.add(ocean);
 const seaPos = ocean.geometry.attributes.position;
 const seaBase = seaPos.array.slice();
+/* depth gradient baked into vertex colours: bright teal over the sailing
+   ground, deepening toward the edges and the northern shore */
+{
+  const cols = new Float32Array(seaPos.count * 3);
+  for (let i = 0; i < seaPos.count; i++) {
+    const lx = seaBase[i * 3], ly = seaBase[i * 3 + 1];
+    const rn = Math.min(1, Math.hypot(lx, ly) / 780);
+    let s = rn * rn * (3 - 2 * rn);
+    s = Math.min(1, s + Math.max(0, ly / 750) * 0.10);   /* a touch deeper to the north */
+    cols[i * 3]     = 1.03 + (0.50 - 1.03) * s;
+    cols[i * 3 + 1] = 1.06 + (0.64 - 1.06) * s;
+    cols[i * 3 + 2] = 1.03 + (0.85 - 1.03) * s;
+  }
+  ocean.geometry.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+}
 
 /* ============ route ============ */
 const WPT = [
@@ -748,52 +765,296 @@ const clouds = [];
   }
 }
 
-/* container port on the northern horizon: quay, gantry cranes, moored ship */
+/* container port on the northern horizon — REBUILT for exhibition (Sinh:
+   'bối cảnh xung quanh đang không đẹp để triển lãm lắm'): proper quay with
+   waterline band + bollards + fenders + foam edge, an instanced container
+   yard in muted colours, 4 believable STS cranes, two proportioned moored
+   container ships, warehouses, light poles, and a hazy skyline ashore.
+   Everything procedural, merged/instanced to stay cheap. */
 {
   const port = new THREE.Group();
-  const conc = new THREE.MeshStandardMaterial({ color:0x5a6672, roughness:1 });
-  const steel = new THREE.MeshStandardMaterial({ color:0x39506b, roughness:0.8 });
-  const quay = new THREE.Mesh(new THREE.BoxGeometry(760, 7, 30), conc);
-  quay.position.y = 1.5; port.add(quay);
-  const contCols = [0xb5542f, 0x2f6db5, 0x3f8f57, 0x8f8f96, 0xb5a02f, 0x7455a0];
-  for (let i = 0; i < 46; i++) {
-    const col = new THREE.Mesh(new THREE.BoxGeometry(12, 5, 5.4),
-      new THREE.MeshStandardMaterial({ color: contCols[i % contCols.length], roughness: 0.85 }));
-    col.position.set(-350 + (i % 16) * 44 + (Math.random() * 10 - 5), 7.5 + Math.floor(i / 16) * 5.2, -6 + (Math.random() * 6 - 3));
-    port.add(col);
+  const rand = mulberry32(4711);
+  const UB = new THREE.BoxGeometry(1, 1, 1);
+  /* bucket of transformed unit boxes merged into a single mesh per material */
+  function bucket() {
+    const list = [];
+    return {
+      add(x, y, z, sx, sy, sz, rx = 0, ry = 0, rz = 0, geo = UB) {
+        const m = new THREE.Matrix4().compose(
+          new THREE.Vector3(x, y, z),
+          new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)),
+          new THREE.Vector3(sx, sy, sz));
+        const g = geo.clone(); g.applyMatrix4(m); list.push(g);
+      },
+      build(mat) {
+        return new THREE.Mesh(mergeGeometries(list, false), mat);
+      }
+    };
   }
-  for (const cx of [-190, 10, 210]) {
-    const crane = new THREE.Group();
-    for (const lx of [-13, 13]) for (const lz of [-9, 9]) {
-      const leg = new THREE.Mesh(new THREE.BoxGeometry(2.2, 40, 2.2), steel);
-      leg.position.set(lx, 20, lz); crane.add(leg);
+  /* --- procedural textures --- */
+  function concreteTex() {
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const g = c.getContext('2d');
+    g.fillStyle = '#939ca1'; g.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 5200; i++) {
+      g.fillStyle = 'rgba(' + (Math.random() < 0.5 ? '60,68,74' : '210,216,220') + ',' + (0.03 + Math.random() * 0.07) + ')';
+      g.fillRect(Math.random() * 256, Math.random() * 256, 1.6, 1.6);
     }
-    const beam = new THREE.Mesh(new THREE.BoxGeometry(34, 3.4, 3), steel);
-    beam.position.y = 41; crane.add(beam);
-    const boom = new THREE.Mesh(new THREE.BoxGeometry(3, 2.4, 52), steel);
-    boom.position.set(0, 39.5, -14); crane.add(boom);
-    const cab = new THREE.Mesh(new THREE.BoxGeometry(4.4, 4, 4.4), steel);
-    cab.position.set(0, 36.5, -24); crane.add(cab);
+    g.strokeStyle = 'rgba(52,58,64,0.55)'; g.lineWidth = 2;
+    for (let i = 0; i <= 4; i++) {
+      g.beginPath(); g.moveTo(i * 64, 0); g.lineTo(i * 64, 256); g.stroke();
+      g.beginPath(); g.moveTo(0, i * 64); g.lineTo(256, i * 64); g.stroke();
+    }
+    const t = texFromCanvas(c); t.repeat.set(16, 1); return t;
+  }
+  function containerTex() {
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d');
+    g.fillStyle = '#f4f4f4'; g.fillRect(0, 0, 128, 128);
+    for (let x = 4; x < 128; x += 9) {           /* corrugation ribs */
+      g.fillStyle = 'rgba(0,0,0,0.20)'; g.fillRect(x, 0, 2.4, 128);
+      g.fillStyle = 'rgba(255,255,255,0.30)'; g.fillRect(x + 2.4, 0, 1.6, 128);
+    }
+    g.fillStyle = 'rgba(0,0,0,0.28)'; g.fillRect(0, 0, 128, 5); g.fillRect(0, 123, 128, 5);
+    for (let i = 0; i < 260; i++) {
+      g.fillStyle = 'rgba(70,60,50,' + (0.02 + Math.random() * 0.05) + ')';
+      g.fillRect(Math.random() * 128, Math.random() * 128, 2.2, 2.2);
+    }
+    return texFromCanvas(c);
+  }
+  function foamTexture() {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+    const g = c.getContext('2d');
+    g.clearRect(0, 0, 256, 64);
+    for (let i = 0; i < 240; i++) {
+      const x = Math.random() * 256, y = 6 + Math.random() * 52;
+      const r = 2 + Math.random() * 9, a = 0.04 + Math.random() * 0.16 * (1 - Math.abs(y - 32) / 40);
+      const gr = g.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, 'rgba(255,255,255,' + a + ')'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+    }
+    g.fillStyle = 'rgba(255,255,255,0.35)';
+    for (let x = 0; x < 256; x += 3) { const h = 1 + Math.random() * 2.4; g.fillRect(x, 30 + Math.random() * 3, 2, h); }
+    const t = texFromCanvas(c); t.repeat.set(30, 1); return t;
+  }
+  /* --- materials --- */
+  const concMat  = new THREE.MeshStandardMaterial({ map: concreteTex(), roughness: 0.96 });
+  const concDark = new THREE.MeshStandardMaterial({ color: 0x788087, roughness: 1 });
+  const bandMat  = new THREE.MeshStandardMaterial({ color: 0x2c3833, roughness: 1 });
+  const steelDk  = new THREE.MeshStandardMaterial({ color: 0x22282c, roughness: 0.72, metalness: 0.35 });
+  const cranePaint   = new THREE.MeshStandardMaterial({ color: 0xd8dee3, roughness: 0.52, metalness: 0.28 });
+  const cranePaintDk = new THREE.MeshStandardMaterial({ color: 0xaeb8bf, roughness: 0.58, metalness: 0.28 });
+  const craneAccent  = new THREE.MeshStandardMaterial({ color: 0x1d6cae, roughness: 0.5, metalness: 0.2 });
+  const glassMat = new THREE.MeshStandardMaterial({ color: 0x16232d, roughness: 0.14, metalness: 0.55 });
+  const wallMat  = new THREE.MeshStandardMaterial({ color: 0x8b9ca6, roughness: 0.9 });
+  const roofMat  = new THREE.MeshStandardMaterial({ color: 0x4c5962, roughness: 0.95 });
+  const hullBlk  = new THREE.MeshStandardMaterial({ color: 0x202b31, roughness: 0.72, metalness: 0.15 });
+  const hullRed  = new THREE.MeshStandardMaterial({ color: 0x74301f, roughness: 0.85 });
+  const deckMat2 = new THREE.MeshStandardMaterial({ color: 0x50615a, roughness: 0.9 });
+  const whiteMat = new THREE.MeshStandardMaterial({ color: 0xe9edee, roughness: 0.62 });
+
+  /* --- quay + yard apron --- */
+  const quay = new THREE.Mesh(new THREE.BoxGeometry(760, 7, 34), concMat);
+  quay.position.y = 1.5; port.add(quay);
+  const apron = new THREE.Mesh(new THREE.BoxGeometry(760, 6, 112), concDark);
+  apron.position.set(0, 2, -73); port.add(apron);
+  const band = new THREE.Mesh(new THREE.BoxGeometry(760.4, 3.4, 0.6), bandMat);
+  band.position.set(0, 1.6, 15.1); port.add(band);
+  const coping = new THREE.Mesh(new THREE.BoxGeometry(760, 0.5, 2.2), concDark);
+  coping.position.set(0, 5.25, 14.8); port.add(coping);
+  /* bollards + fenders (instanced) */
+  {
+    const bol = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.55, 0.72, 1.15, 10), steelDk, 20);
+    const fen = new THREE.InstancedMesh(new THREE.BoxGeometry(1.25, 3.4, 0.7), steelDk, 20);
+    const m4 = new THREE.Matrix4();
+    for (let i = 0; i < 20; i++) {
+      const x = -361 + i * 38;
+      m4.makeTranslation(x, 5.55, 15.6); bol.setMatrixAt(i, m4);
+      m4.makeTranslation(x + 19, 2.6, 15.4); fen.setMatrixAt(i, m4);
+    }
+    bol.frustumCulled = fen.frustumCulled = false;
+    port.add(bol, fen);
+  }
+  /* foam edge along the quay waterline (scrolled slowly in animate) */
+  quayFoamTex = foamTexture();
+  {
+    const foam = new THREE.Mesh(new THREE.PlaneGeometry(760, 6.5),
+      new THREE.MeshBasicMaterial({ map: quayFoamTex, transparent: true, opacity: 0.6, depthWrite: false }));
+    foam.rotation.x = -Math.PI / 2; foam.position.set(0, 1.78, 19.2);
+    port.add(foam);
+  }
+
+  /* --- container yard: instanced stacks, muted palette, lanes --- */
+  const contGeo = new THREE.BoxGeometry(12, 5.2, 5.6);
+  const contMat = new THREE.MeshStandardMaterial({ map: containerTex(), roughness: 0.82, metalness: 0.08 });
+  const contPalette = [0xa63d2a, 0x2a5f9e, 0x3d7a4a, 0xc46a24, 0x707880, 0x8c2f39, 0x2e7f86, 0x96762e];
+  {
+    const yard = new THREE.InstancedMesh(contGeo, contMat, 920);
+    const m4 = new THREE.Matrix4(), col = new THREE.Color();
+    let n = 0;
+    const rows = [-27, -40.5, -54, -67.5];
+    for (const rz of rows) {
+      for (let b = 0; b < 54; b++) {
+        if (b % 13 === 6) continue;                    /* cross lanes */
+        if (rand() < 0.12) continue;                   /* organic gaps */
+        const x = -350 + b * 13.2;
+        const hRoll = rand();
+        const h = hRoll < 0.25 ? 1 : hRoll < 0.60 ? 2 : hRoll < 0.85 ? 3 : 4;
+        col.setHex(contPalette[Math.floor(rand() * contPalette.length)]);
+        for (let lv = 0; lv < h; lv++) {
+          if (n >= 920) break;
+          m4.makeTranslation(x + (rand() - 0.5) * 0.3, 7.6 + lv * 5.2, rz + (rand() - 0.5) * 0.3);
+          yard.setMatrixAt(n, m4);
+          const c2 = col.clone(); c2.offsetHSL(0, 0, (rand() - 0.5) * 0.07);
+          yard.setColorAt(n, c2);
+          n++;
+        }
+      }
+    }
+    yard.count = n; yard.frustumCulled = false;
+    port.add(yard);
+  }
+
+  /* --- STS gantry cranes x4 (merged buckets per material) --- */
+  function buildCrane(spreaderY) {
+    const g = new THREE.Group();
+    const paint = bucket(), paintDk = bucket(), accent = bucket(), dark = bucket(), glassB = bucket();
+    for (const lx of [-14, 14]) for (const lz of [-10, 10])
+      paint.add(lx, 22, lz, 2.6, 44, 2.6);
+    for (const lz of [-10, 10]) {
+      paint.add(0, 1.4, lz, 33, 2.4, 2.6);
+      paint.add(0, 45.2, lz, 33, 3.4, 3);
+      paintDk.add(0, 23, lz, 0.85, 50, 0.85, 0, 0, 0.565);
+      paintDk.add(0, 23, lz, 0.85, 50, 0.85, 0, 0, -0.565);
+    }
+    for (const lx of [-14, 14]) paint.add(lx, 45.2, 0, 3, 3.4, 23);
+    paint.add(0, 47.4, 8, 3.2, 2.6, 66);                 /* boom: land -25 .. water +41 */
+    paint.add(0, 52, -6, 2.4, 10, 2.4);                  /* tower post */
+    dark.add(0, 52.2, 17.5, 0.34, 0.34, 48, 0.20, 0, 0); /* tie rod to boom tip */
+    dark.add(0, 52.2, -15.5, 0.34, 0.34, 22, -0.47, 0, 0);/* back tie rod */
+    paintDk.add(0, 48.4, -15, 15, 5.4, 11);              /* machinery house */
+    accent.add(0, 45.7, -15, 15.4, 0.9, 11.4);
+    accent.add(0, 47.4, 40.2, 3.5, 2.9, 2.6);            /* boom tip band */
+    accent.add(0, 43.1, 30, 4.6, 3.4, 4.2);              /* operator cab */
+    glassB.add(0, 42.7, 32.15, 4.7, 1.7, 0.25);          /* cab glass */
+    dark.add(0, 45.7, 32, 3.4, 1.1, 3.4);                /* trolley */
+    const cableLen = 45.1 - spreaderY;
+    for (const cx of [-5.4, 5.4]) for (const cz of [30.9, 33.1])
+      dark.add(cx, spreaderY + cableLen / 2, cz, 0.09, cableLen, 0.09);
+    accent.add(0, spreaderY, 32, 12.4, 1.7, 2.7);        /* spreader */
+    g.add(paint.build(cranePaint), paintDk.build(cranePaintDk),
+          accent.build(craneAccent), dark.build(steelDk), glassB.build(glassMat));
+    return g;
+  }
+  const craneXs = [-285, -95, 95, 285];
+  const spreaderYs = [30, 34, 24, 28];
+  craneXs.forEach((cx, i) => {
+    const crane = buildCrane(spreaderYs[i]);
     crane.position.set(cx, 5, -4);
     port.add(crane);
+    if (i === 2) {  /* one crane is working a box over the moored ship */
+      const load = new THREE.Mesh(contGeo, new THREE.MeshStandardMaterial({
+        map: contMat.map, color: 0xc46a24, roughness: 0.82 }));
+      load.position.set(cx, 25.5, 28);
+      port.add(load);
+    }
+  });
+
+  /* --- moored container ships (extruded plan hull + instanced boxes) --- */
+  function buildCargoShip(len, seed) {
+    const g = new THREE.Group();
+    const r2 = mulberry32(seed);
+    const hl = len / 2, hw = len * 0.0675, hullH = len * 0.052;
+    const shape = new THREE.Shape();
+    shape.moveTo(-hl, -hw); shape.lineTo(hl * 0.60, -hw); shape.lineTo(hl, 0);
+    shape.lineTo(hl * 0.60, hw); shape.lineTo(-hl, hw); shape.closePath();
+    const hullGeo = new THREE.ExtrudeGeometry(shape, { depth: hullH, bevelEnabled: false });
+    hullGeo.rotateX(-Math.PI / 2);
+    const hull = new THREE.Mesh(hullGeo, hullBlk); hull.position.y = 0.1; g.add(hull);
+    const keel = new THREE.Mesh(new THREE.BoxGeometry(len * 0.94, 3.2, hw * 1.9), hullRed);
+    keel.position.y = 1.5; g.add(keel);
+    const deckY = hullH + 0.45;
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(len * 0.97, 0.7, hw * 1.86), deckMat2);
+    deck.position.y = deckY; g.add(deck);
+    const bays = Math.floor(len * 0.60 / 13.2);
+    const inst = new THREE.InstancedMesh(contGeo, contMat, Math.max(1, bays * 4 * 3));
+    const m4 = new THREE.Matrix4(), col = new THREE.Color();
+    let n = 0;
+    const rowFracs = hw > 10 ? [-0.66, -0.22, 0.22, 0.66] : [-0.46, 0.46];
+    for (let b = 0; b < bays; b++) for (const rf of rowFracs) { const rz = rf * hw;
+      const h = 1 + Math.floor(r2() * 3);
+      col.setHex(contPalette[Math.floor(r2() * contPalette.length)]);
+      for (let lv = 0; lv < h; lv++) {
+        m4.makeTranslation(-len * 0.26 + b * 13.2, deckY + 2.95 + lv * 5.2, rz);
+        inst.setMatrixAt(n, m4);
+        const c2 = col.clone(); c2.offsetHSL(0, 0, (r2() - 0.5) * 0.07);
+        inst.setColorAt(n, c2); n++;
+      }
+    }
+    inst.count = n; inst.frustumCulled = false; g.add(inst);
+    const dh = bucket();
+    dh.add(-len * 0.40, deckY + 7.5, 0, 13, 15, hw * 1.55);
+    dh.add(-len * 0.40, deckY + 17.2, 0, 5, 4.6, 6.5);
+    g.add(dh.build(whiteMat));
+    const dk = bucket();
+    dk.add(-len * 0.40, deckY + 12.6, 0, 13.3, 1.3, hw * 1.58);
+    g.add(dk.build(glassMat));
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.2, 9, 6), steelDk);
+    mast.position.set(len * 0.36, deckY + 4.5, 0); g.add(mast);
+    return g;
   }
-  const bigShip = new THREE.Group();
-  const hullB = new THREE.Mesh(new THREE.BoxGeometry(180, 13, 25),
-    new THREE.MeshStandardMaterial({ color:0x6e2f26, roughness:0.9 }));
-  hullB.position.y = 4; bigShip.add(hullB);
-  for (let i = 0; i < 22; i++) {
-    const cc = new THREE.Mesh(new THREE.BoxGeometry(12.5, 5.4, 11),
-      new THREE.MeshStandardMaterial({ color: contCols[(i * 2 + 1) % contCols.length], roughness: 0.85 }));
-    cc.position.set(-72 + (i % 11) * 14.5, 13 + Math.floor(i / 11) * 5.6, (i % 2 ? -5.8 : 5.8));
-    bigShip.add(cc);
+  const shipA = buildCargoShip(185, 777); shipA.position.set(120, 0, 34); port.add(shipA);
+  const shipB = buildCargoShip(118, 555); shipB.position.set(-298, 0, 42); shipB.rotation.y = 0.03; port.add(shipB);
+
+  /* --- warehouses + light poles --- */
+  {
+    const walls = bucket(), roofs = bucket(), doors = bucket();
+    for (const wx of [-262, 0, 262]) {
+      walls.add(wx, 11.5, -104, 150, 13, 34);
+      roofs.add(wx, 21.1, -112.4, 152, 0.6, 20.5, 0.30, 0, 0);
+      roofs.add(wx, 21.1, -95.6, 152, 0.6, 20.5, -0.30, 0, 0);
+      doors.add(wx, 8.2, -86.7, 150.3, 6.5, 0.5);
+    }
+    port.add(walls.build(wallMat), roofs.build(roofMat), doors.build(steelDk));
+    const poles = bucket(), heads = bucket();
+    for (let i = 0; i < 8; i++) {
+      const x = -332 + i * 95;
+      poles.add(x, 12.5, 12.5, 0.36, 15, 0.36);
+      poles.add(x, 19.6, 14.2, 0.32, 0.32, 4);
+      heads.add(x, 19.4, 16.2, 0.7, 0.28, 1.8);
+    }
+    port.add(poles.build(steelDk));
+    port.add(heads.build(new THREE.MeshStandardMaterial({
+      color: 0x3a3f42, emissive: 0xffe2a8, emissiveIntensity: 0.5, roughness: 0.6 })));
   }
-  const ssB = new THREE.Mesh(new THREE.BoxGeometry(13, 17, 20),
-    new THREE.MeshStandardMaterial({ color:0xe8edf0, roughness:0.7 }));
-  ssB.position.set(-88, 17, 0); bigShip.add(ssB);
-  bigShip.position.set(120, 0, 34);
-  port.add(bigShip);
   port.position.set(0, -1.4, -318);
   scene.add(port);
+
+  /* --- distant shore, hills and a hazy skyline behind the port --- */
+  {
+    /* distant shore dressing uses flat pre-hazed colours (Basic materials):
+       sun + fog would wash lit materials out to white at this range */
+    const shoreMat = new THREE.MeshBasicMaterial({ color: 0x87a1b1 });
+    const shore = new THREE.Mesh(new THREE.BoxGeometry(1700, 7, 80), shoreMat);
+    shore.position.set(0, -1, -500); scene.add(shore);
+    const hillMat = new THREE.MeshBasicMaterial({ color: 0x7d99ae });
+    const hills = bucket();
+    const hillGeo = new THREE.ConeGeometry(1, 1, 7);
+    const hr = mulberry32(99);
+    for (let i = 0; i < 6; i++) {
+      const x = -640 + i * 250 + (hr() - 0.5) * 90;
+      hills.add(x, 10, -530, 130 + hr() * 90, 22 + hr() * 20, 90, 0, 0, 0, hillGeo);
+    }
+    scene.add(hills.build(hillMat));
+    const skyMat = new THREE.MeshBasicMaterial({ color: 0x86a3b8 });
+    const sky = bucket();
+    const sr = mulberry32(1234);
+    for (let i = 0; i < 16; i++) {
+      const w = 18 + sr() * 18, h = 15 + sr() * 30;
+      sky.add(-520 + i * 68 + (sr() - 0.5) * 22, h / 2, -472, w, h, 18);
+    }
+    scene.add(sky.build(skyMat));
+  }
 }
 /* a small workboat sailing its own wide ellipse — life in the scene */
 const boat2 = new THREE.Group();
@@ -1028,8 +1289,9 @@ function enhanceOceanSurface() {
   ocean.material.map = seaTex;
   ocean.material.normalMap = seaNormalTex;
   ocean.material.normalScale.set(0.48, 0.48);
-  ocean.material.color.set(0x0d67ad);
-  ocean.material.roughness = 0.30;
+  ocean.material.color.set(0x0c62a8);
+  ocean.material.roughness = 0.27;
+  ocean.material.vertexColors = true;
   ocean.material.metalness = 0.02;
   ocean.material.envMapIntensity = 0.75;
   ocean.material.needsUpdate = true;
@@ -2749,6 +3011,7 @@ function animate() {
 
   if (seaTex) { seaTex.offset.x = t * 0.006; seaTex.offset.y = t * 0.0021; }
   if (seaNormalTex) { seaNormalTex.offset.x = t * 0.0035; seaNormalTex.offset.y = -t * 0.0017; }
+  if (quayFoamTex) { quayFoamTex.offset.x = t * 0.004; }
   if (radarBar) radarBar.rotation.y -= dt * 1.45;
   /* second vessel on its own ellipse, opposite hand */
   {
