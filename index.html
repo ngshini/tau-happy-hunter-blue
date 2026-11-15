@@ -689,11 +689,44 @@ const routePts = curve.getPoints(360);
    SIM ship still sails this loop and the minimap still uses the data;
    only the 3D visuals are gone. */
 
-/* sailed-track DATA only: trail points are still recorded (the minimap
-   draws the track from them) but the bright cyan ribbon that used to be
-   drawn on the water from them is REMOVED (Sinh, 2026-11-15). */
+/* sailed track: bright ribbon (wide, glowing) built from the trail points.
+   The ribbon was removed with the other route decorations on 2026-11-15
+   (86489b9) but Sinh asked for it back the same evening ('vẫn chưa có như
+   này', with a screenshot of the pale band curving behind the ship) — the
+   ribbon ONLY is restored; buoys / dashed route line / pulses stay gone.
+   The minimap also draws its track from these same trail points. */
 const TRAIL_MAX = 900;
 const trailPts = [];
+const ribbonPos = new Float32Array(TRAIL_MAX * 2 * 3);
+const ribbonGeo = new THREE.BufferGeometry();
+ribbonGeo.setAttribute('position', new THREE.BufferAttribute(ribbonPos, 3));
+{
+  const idx = [];
+  for (let i = 0; i < TRAIL_MAX - 1; i++) {
+    const a = i * 2;
+    idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+  }
+  ribbonGeo.setIndex(idx);
+}
+const ribbon = new THREE.Mesh(ribbonGeo, new THREE.MeshBasicMaterial({
+  color:0x2fd8f2, transparent:true, opacity:0.55, side:THREE.DoubleSide,
+  blending:THREE.AdditiveBlending, depthWrite:false }));
+ribbon.frustumCulled = false;
+scene.add(ribbon);
+function rebuildRibbon() {
+  const n = trailPts.length, W2 = 1.5;
+  for (let i = 0; i < n; i++) {
+    const p = trailPts[i];
+    const q = trailPts[Math.min(i + 1, n - 1)], q0 = trailPts[Math.max(i - 1, 0)];
+    let dx = q.x - q0.x, dz = q.z - q0.z;
+    const L = Math.hypot(dx, dz) || 1; dx /= L; dz /= L;
+    const px = -dz, pz = dx;
+    ribbonPos[i * 6]     = p.x - px * W2; ribbonPos[i * 6 + 1] = 0.36; ribbonPos[i * 6 + 2] = p.z - pz * W2;
+    ribbonPos[i * 6 + 3] = p.x + px * W2; ribbonPos[i * 6 + 4] = 0.36; ribbonPos[i * 6 + 5] = p.z + pz * W2;
+  }
+  ribbonGeo.attributes.position.needsUpdate = true;
+  ribbonGeo.setDrawRange(0, Math.max(0, (n - 1) * 6));
+}
 
 /* ============ scenery: island, lighthouse, distant ship ============ */
 /* (the 12 red/green channel buoys that ringed the route were REMOVED —
@@ -3064,11 +3097,12 @@ function animate() {
       sprayGeo.attributes.position.needsUpdate = true;
     }
 
-    /* trail recording (data for the minimap track; no 3D ribbon any more) */
+    /* trail recording */
     if (sailing && t - lastTrail > 0.35) {
       lastTrail = t;
       trailPts.push(new THREE.Vector3(shipPos.x, 0.36, shipPos.z));
       if (trailPts.length > TRAIL_MAX) trailPts.shift();
+      rebuildRibbon();
     }
 
     /* clouds drift */
